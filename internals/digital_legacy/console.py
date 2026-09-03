@@ -214,15 +214,28 @@ class Console:
         self._total_steps = total
         self._step = 0
 
-    def banner(self, title: str, *, step: bool = True, style: str = "cyan") -> None:
+    def banner(
+        self,
+        title: str,
+        *,
+        step: bool = True,
+        advance: bool = True,
+        style: str = "cyan",
+    ) -> None:
         """Draw a boxed heading, optionally numbered.
 
         Step numbering lives here rather than in the wizards, because the old
         scripts each tracked ``current_step`` by hand and the encrypt wizard
         drifted: it advertised five steps and finished on "[Step 6 of 5]".
+
+        ``advance=False`` redraws the *current* step. The decrypt wizard needs
+        it when a beneficiary picks the wrong file: re-showing the heading for
+        another attempt at the same key must not consume a step, or a run with
+        two retries ends on "[Step 7 of 5]" -- the same defect in a new place.
         """
         if step and self._total_steps:
-            self._step += 1
+            if advance or self._step == 0:
+                self._step += 1
             text = f"[Step {self._step} of {self._total_steps}] {title}"
         else:
             text = title

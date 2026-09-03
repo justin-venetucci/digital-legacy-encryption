@@ -17,11 +17,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from digital_legacy import agekeys
-from digital_legacy.cli import main as cli_main
-from digital_legacy.console import Console
-from digital_legacy.vault import Vault
-from digital_legacy.wizards import DecryptWizard, EncryptWizard
 from support import (
     guard_not_the_real_repo,
     make_layout,
@@ -29,6 +24,12 @@ from support import (
     requires_binaries,
     strip_ansi,
 )
+
+from digital_legacy import agekeys
+from digital_legacy.cli import main as cli_main
+from digital_legacy.console import Console
+from digital_legacy.vault import Vault
+from digital_legacy.wizards import DecryptWizard, EncryptWizard
 
 
 class ScriptedConsole(Console):
@@ -206,6 +207,52 @@ class DecryptWizardTests(unittest.TestCase):
         )
         self.assertEqual(code, 0, console.text)
         self.assertIn("already accepted", console.text)
+
+    def test_step_numbers_survive_repeated_mistakes(self):
+        """A retry must redraw its step, not consume a new one.
+
+        The first fix for "[Step 6 of 5]" only covered the encrypt wizard. The
+        decrypt wizard reintroduced it by the back door: every rejected file
+        drew a fresh banner, so a beneficiary who fumbled twice finished on
+        "[Step 7 of 5]" -- and fumbling is the expected case here.
+        """
+        import re
+
+        junk = self.root / "junk.txt"
+        junk.write_text("not a key")
+        code, console = self.run_wizard(
+            [
+                "",
+                "no-such-file.yaml",         # a path that does not exist
+                str(junk),                   # a file with no key in it
+                "y",                         # try again
+                str(self.keys["Alice"]),
+                str(self.keys["Alice"]),     # a duplicate
+                "y",
+                str(self.keys["Bob"]),
+                "n", "",
+            ]
+        )
+        self.assertEqual(code, 0, console.text)
+        pairs = re.findall(r"\[Step (\d+) of (\d+)\]", console.text)
+        self.assertTrue(pairs)
+        for current, total in pairs:
+            self.assertLessEqual(
+                int(current), int(total), f"step {current} exceeds {total}"
+            )
+
+    def test_a_typed_path_that_does_not_exist_does_not_crash(self):
+        """This escaped as a raw FileNotFoundError traceback."""
+        code, console = self.run_wizard(
+            [
+                "", "definitely-not-here.yaml",
+                str(self.keys["Alice"]), str(self.keys["Bob"]),
+                "n", "",
+            ]
+        )
+        self.assertEqual(code, 0, console.text)
+        self.assertIn("no file at that path", console.text.lower())
+        self.assertNotIn("Traceback", console.text)
 
     def test_a_key_from_another_vault_is_named_as_such(self):
         stranger = agekeys.generate(real_toolchain(), label="Stranger")

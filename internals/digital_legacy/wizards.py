@@ -197,9 +197,17 @@ class DecryptWizard:
         flow made them do for several kinds of mistake.
         """
         console = self.console
+        banner_shown_for = 0
         while len(self.collected) < policy.threshold:
             number = len(self.collected) + 1
-            console.banner(f"Key {number} of {policy.threshold}")
+            # Retrying the same key redraws its heading without consuming a
+            # step, so the advertised total stays honest however many attempts
+            # a beneficiary needs.
+            console.banner(
+                f"Key {number} of {policy.threshold}",
+                advance=number != banner_shown_for,
+            )
+            banner_shown_for = number
 
             try:
                 path = choose_file(

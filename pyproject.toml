@@ -53,6 +53,24 @@ ignore = [
     "S603",  # every call site uses a fixed argv list, never a shell string
 ]
 
+[tool.ruff.lint.isort]
+# tests/support.py is what puts internals/ on sys.path, so it has to be
+# imported before anything from digital_legacy. Left to alphabetical order the
+# formatter puts it second and every test module fails to import.
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "test-support",
+    "first-party",
+    "local-folder",
+]
+
+known-first-party = ["digital_legacy"]
+
+[tool.ruff.lint.isort.sections]
+"test-support" = ["support"]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # assertions are what a test suite is made of
 # handoff.py is mostly prose templates: whole paragraphs interpolated into

@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from support import PUBLIC_KEYS
+
 from digital_legacy.errors import VaultError
 from digital_legacy.policy import Policy
 from digital_legacy.vault import (
@@ -16,7 +18,6 @@ from digital_legacy.vault import (
     VaultEntry,
     unique_path,
 )
-from support import PUBLIC_KEYS
 
 
 class FilenameTests(unittest.TestCase):

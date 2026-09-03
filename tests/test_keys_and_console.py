@@ -9,11 +9,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from support import PUBLIC_KEYS, SECRET_KEYS, FakeToolchain, strip_ansi
+
 from digital_legacy import agekeys
 from digital_legacy.console import Console
 from digital_legacy.errors import KeyFileError, OperationCancelled
 from digital_legacy.picker import clean_typed_path
-from support import PUBLIC_KEYS, SECRET_KEYS, FakeToolchain, strip_ansi
 
 
 class LabelTests(unittest.TestCase):

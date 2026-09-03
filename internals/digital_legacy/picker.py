@@ -76,22 +76,37 @@ def choose_file(
     """
     initial = _first_existing(start_dir, Path.home() / "Desktop", Path.home())
 
-    if tk_available():
+    if not tk_available():
+        return _ask_for_path(console, title, initial)
+
+    while True:
         console.info(prompt + ", or type a file path here.")
         typed = console.ask("Path (or Enter for the chooser)", default="")
+
         if typed.strip():
-            return _validate(clean_typed_path(typed))
+            # A typed path gets the same forgiving treatment as the fallback:
+            # a typo must re-prompt, never escape as a traceback. This branch
+            # used to raise FileNotFoundError straight at the beneficiary.
+            try:
+                return _validate(clean_typed_path(typed))
+            except FileNotFoundError:
+                console.error("There is no file at that path. Please try again.")
+                continue
+            except IsADirectoryError:
+                console.error("That is a folder, not a file. Please try again.")
+                continue
+
         selected = _tk_dialog(title, file_types, initial)
         if selected is None:
-            console.warn(
-                "The file chooser could not be opened on this computer."
-            )
+            console.warn("The file chooser could not be opened on this computer.")
             return _ask_for_path(console, title, initial)
         if not selected:
             raise OperationCancelled("No file was selected.")
-        return _validate(selected)
-
-    return _ask_for_path(console, title, initial)
+        try:
+            return _validate(selected)
+        except (FileNotFoundError, IsADirectoryError):
+            # The chooser can return a path that has since moved.
+            console.error("That file could not be opened. Please try again.")
 
 
 def _tk_dialog(

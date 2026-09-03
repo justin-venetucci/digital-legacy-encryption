@@ -12,6 +12,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from support import FakeToolchain, real_toolchain, requires_binaries
+
 from digital_legacy import agekeys, operations
 from digital_legacy.errors import (
     DecryptionError,
@@ -22,7 +24,6 @@ from digital_legacy.errors import (
 )
 from digital_legacy.policy import Policy
 from digital_legacy.vault import Vault, sha256_file
-from support import FakeToolchain, real_toolchain, requires_binaries
 
 
 class EncryptGuardTests(unittest.TestCase):
