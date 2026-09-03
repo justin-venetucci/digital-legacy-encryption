@@ -69,7 +69,13 @@ class Toolchain:
         Reporting every missing file at once matters: a beneficiary who fixes
         them one error at a time gives up faster than one handed a checklist.
         """
-        binaries_dir = Path(binaries_dir)
+        # Absolute, always. `age` locates its plugin through Go's exec.LookPath,
+        # which refuses any hit that resolves inside the current directory:
+        #     "age-plugin-sss resolves to executable in current directory"
+        # A relative entry on PATH triggers exactly that and breaks decryption.
+        # The old scripts escaped it only because Path(__file__) is absolute in
+        # Python 3.9+; nothing made it true on purpose.
+        binaries_dir = Path(binaries_dir).resolve()
         resolved: dict[str, Path] = {}
         missing: list[str] = []
 
@@ -109,9 +115,12 @@ class Toolchain:
 
     @staticmethod
     def build_env(binaries_dir: Path) -> dict[str, str]:
-        """A copy of the environment with the binaries directory first on PATH."""
+        """A copy of the environment with the binaries directory first on PATH.
+
+        Absolute, for the exec.LookPath reason described in :meth:`discover`.
+        """
         env = os.environ.copy()
-        env["PATH"] = str(binaries_dir) + os.pathsep + env.get("PATH", "")
+        env["PATH"] = str(Path(binaries_dir).resolve()) + os.pathsep + env.get("PATH", "")
         return env
 
     # -- execution --------------------------------------------------------
