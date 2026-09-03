@@ -13,8 +13,17 @@ from a shell in the repository root, or by a wrapper script from somewhere else.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
+
+ROOT_ENV_VAR = "DIGITAL_LEGACY_ROOT"
+"""Point the tool at a different project folder.
+
+Useful for keeping a vault on a USB stick or an external drive while running
+the code from a checkout, and it is what the test suite uses so a test run can
+never touch the real vault.
+"""
 
 
 @dataclass(frozen=True)
@@ -31,6 +40,10 @@ class Layout:
         the package has been pip-installed elsewhere, fall back to the current
         directory so a developer checkout still works.
         """
+        override = os.environ.get(ROOT_ENV_VAR)
+        if override:
+            return cls(root=Path(override).expanduser().resolve())
+
         here = Path(start or __file__).resolve()
         internals = here.parent.parent
         root = internals.parent

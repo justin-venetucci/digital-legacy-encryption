@@ -120,10 +120,16 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, layout: Layout | None = None) -> int:
+    """Run one command.  ``layout`` overrides where the project folder is found.
+
+    Passing it explicitly is how the test suite guarantees a run cannot reach
+    the real vault; ordinary use leaves it None and discovers from the package
+    location or the DIGITAL_LEGACY_ROOT environment variable.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
-    layout = Layout.discover()
+    layout = layout or Layout.discover()
     plain = getattr(args, "no_colour", False)
     quiet = getattr(args, "quiet", False)
     console = (

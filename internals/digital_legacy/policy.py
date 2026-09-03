@@ -166,6 +166,11 @@ class Policy:
         shares: list[str] = []
         in_shares = False
 
+        # Notepad writes a byte-order mark when it saves as UTF-8, and owners do
+        # edit this file by hand. Without this the BOM fuses onto the first key
+        # name and the file is rejected for an invisible character.
+        text = text.lstrip("﻿")
+
         for number, raw in enumerate(text.splitlines(), start=1):
             line = raw.split("#", 1)[0].rstrip()
             if not line.strip():

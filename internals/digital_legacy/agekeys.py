@@ -30,6 +30,15 @@ PUBLIC_KEY_ANYWHERE_RE = re.compile(r"\b(age1[02-9ac-hj-np-z]{50,})\b")
 KEY_FILE_PREFIX = "Key for Digital Legacy - "
 KEY_FILE_SUFFIX = ".yaml"
 
+# Windows refuses to create a file with any of these stems, extension or not.
+# A keyholder called "Con" is unlikely but the failure would happen *after* the
+# key had been generated, destroying the only copy of a secret.
+_RESERVED_WINDOWS_NAMES = frozenset(
+    ["CON", "PRN", "AUX", "NUL"]
+    + [f"COM{i}" for i in range(1, 10)]
+    + [f"LPT{i}" for i in range(1, 10)]
+)
+
 
 def key_file_name(label: str) -> str:
     """Filename for a keyholder's share, with path separators neutralised."""
@@ -45,11 +54,15 @@ def sanitise_label(label: str) -> str:
     the key had already been generated, losing it.
     """
     cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", (label or "").strip())
-    cleaned = cleaned.strip(". ")
+    # Collapse runs of dots so no ".." survives to be read as a parent
+    # directory, while leaving a single dot alone ("Dr. Smith" is a name).
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
+    cleaned = re.sub(r"-{2,}", "-", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned)
-    if not cleaned:
+    cleaned = cleaned.strip("-. ")
+    if not cleaned or cleaned.upper() in _RESERVED_WINDOWS_NAMES:
         cleaned = "Keyholder"
-    return cleaned[:60]
+    return cleaned[:60].strip("-. ") or "Keyholder"
 
 
 @dataclass(frozen=True)
