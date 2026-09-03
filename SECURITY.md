@@ -90,6 +90,10 @@ substituted `age` could exfiltrate the document or encrypt to an attacker's key.
 - `vault.json` records a SHA-256 prefix of each binary at encryption time, and
   `doctor` reports when one has changed since. That detects drift, not an
   attacker who was present from the start.
+- Diagnostics from the binaries are shown to users, so anything key-shaped is
+  blanked out of an error before it reaches a screen. The builds in use do not
+  echo key material — that was checked against the real binaries — but an error
+  message is a bad place to find out that a future one does.
 
 ## Changing the keyholders
 

@@ -31,7 +31,7 @@ from .errors import (
     VerificationError,
 )
 from .policy import Policy
-from .toolchain import Toolchain
+from .toolchain import Toolchain, redact
 from .vault import Vault, VaultEntry, now_iso, sha256_file, unique_path
 
 Progress = Callable[[str], None]
@@ -205,7 +205,7 @@ def verify_entry(
                     ok=False,
                     detail=(
                         "age could not decrypt the file it had just written: "
-                        + (result.stderr.strip() or "no reason given")
+                        + (redact(result.stderr.strip()) or "no reason given")
                     ),
                     shares_used=labels,
                 )
@@ -362,7 +362,7 @@ def decrypt_entry(
             )
         raise DecryptionError(
             "The document could not be decrypted.",
-            hint=stderr or "age did not say why.",
+            hint=redact(stderr) or "age did not say why.",
         )
 
     if not destination.exists() or destination.stat().st_size == 0:

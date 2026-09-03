@@ -12,12 +12,30 @@ binary -- :meth:`Toolchain.run` -- and it cannot forget.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .errors import ToolchainError
+
+_SECRETISH = re.compile(
+    r"\b(AGE-SECRET-KEY-[A-Z0-9]+|AGE-PLUGIN-[A-Z0-9-]*-1[A-Z0-9]+)\b",
+    re.IGNORECASE,
+)
+
+
+def redact(text: str) -> str:
+    """Blank out anything key-shaped before it can reach a screen or a log.
+
+    The current age and age-plugin-sss builds do not echo key material in their
+    error output -- that was checked, not assumed. But their diagnostics end up
+    in messages we show to a user, and a future build that quotes its input back
+    would turn a routine error into a disclosure, possibly onto a shared screen
+    or into a screenshot sent to whoever is helping. Cheap insurance.
+    """
+    return _SECRETISH.sub("[key redacted]", text or "")
 
 DEFAULT_TIMEOUT = 120
 """Seconds.  Encryption of a large document is the slow case; a hung binary
@@ -184,7 +202,7 @@ class Toolchain:
         if check and not result.ok:
             raise ToolchainError(
                 f"{Path(executable).name} reported an error.",
-                hint=(result.stderr or result.stdout).strip() or None,
+                hint=redact((result.stderr or result.stdout).strip()) or None,
             )
         return result
 

@@ -13,8 +13,9 @@ from support import PUBLIC_KEYS, SECRET_KEYS, FakeToolchain, strip_ansi
 
 from digital_legacy import agekeys
 from digital_legacy.console import Console
-from digital_legacy.errors import KeyFileError, OperationCancelled
+from digital_legacy.errors import KeyFileError, OperationCancelled, ToolchainError
 from digital_legacy.picker import clean_typed_path
+from digital_legacy.toolchain import redact
 
 
 class LabelTests(unittest.TestCase):
@@ -146,6 +147,54 @@ class KeyFileTests(unittest.TestCase):
         b = agekeys.public_key_fingerprint(PUBLIC_KEYS[1])
         self.assertNotEqual(a, b)
         self.assertRegex(a, r"^[A-Z0-9]{4}-[A-Z0-9]{4}$")
+
+
+class RedactionTests(unittest.TestCase):
+    """Nothing key-shaped may reach a screen through an error message.
+
+    The age and age-plugin-sss builds in use do not echo key material in their
+    diagnostics -- that was checked against the real binaries, not assumed --
+    but those diagnostics are shown to users, so a future build that quoted its
+    input back would turn a routine error into a disclosure.
+    """
+
+    def test_a_private_key_in_an_error_is_blanked(self):
+        message = f"failed to parse {SECRET_KEYS[0]} at line 1"
+        self.assertNotIn(SECRET_KEYS[0], redact(message))
+        self.assertIn("[key redacted]", redact(message))
+
+    def test_a_combined_plugin_identity_is_blanked(self):
+        message = "bad identity AGE-PLUGIN-SSS-1R79SSQQQQQQQQQ8LDNXTHT"
+        self.assertNotIn("1R79SSQ", redact(message))
+
+    def test_ordinary_messages_are_left_alone(self):
+        for message in (
+            "age: error: no identity matched any of the recipients",
+            "cannot open Key for Digital Legacy - Alice.yaml",
+            "",
+        ):
+            self.assertEqual(redact(message), message)
+
+    def test_public_keys_are_not_redacted(self):
+        """They are public, and a beneficiary may need to compare one."""
+        self.assertIn(PUBLIC_KEYS[0], redact(f"unknown recipient {PUBLIC_KEYS[0]}"))
+
+    def test_console_redacts_at_the_point_of_display(self):
+        buffer = io.StringIO()
+        console = Console(
+            buffer, colour=False, unicode=False, animate=False, interactive=False
+        )
+        console.problem(
+            KeyFileError("Bad key.", hint=f"stderr said: {SECRET_KEYS[0]}")
+        )
+        self.assertNotIn(SECRET_KEYS[0], buffer.getvalue())
+
+    def test_toolchain_redacts_before_raising(self):
+        toolchain = FakeToolchain()
+        toolchain.fail_on = "age-plugin"
+        with self.assertRaises(ToolchainError) as caught:
+            toolchain.run(toolchain.age_plugin_sss, "--generate-identity")
+        self.assertIsNotNone(caught.exception.hint)
 
 
 class ConsoleTests(unittest.TestCase):

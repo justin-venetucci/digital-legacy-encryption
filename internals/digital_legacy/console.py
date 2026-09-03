@@ -279,13 +279,20 @@ class Console:
             self.write(f"  {self.bullet} {item}", style)
 
     def problem(self, exc: Exception) -> None:
-        """Render an error the way a beneficiary should meet it."""
+        """Render an error the way a beneficiary should meet it.
+
+        Redacted on the way out as well as on the way in: this is the last point
+        before anything reaches a screen, and an error message is a bad place to
+        discover that some component quoted a private key back at us.
+        """
+        from .toolchain import redact
+
         self.blank()
         message = getattr(exc, "message", None) or str(exc)
-        self.error(f"Problem: {message}")
+        self.error(f"Problem: {redact(message)}")
         hint = getattr(exc, "hint", None)
         if hint:
-            for line in hint.splitlines():
+            for line in redact(hint).splitlines():
                 self.write(f"         {line}", "dark_yellow")
 
     # -- progress ---------------------------------------------------------
