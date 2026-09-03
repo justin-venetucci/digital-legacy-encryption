@@ -1,0 +1,57 @@
+# Packaging is a convenience for development, not a requirement for use.
+#
+# The shipped path is `python internals/scripts/decrypt.py`, which needs no
+# installation at all -- a beneficiary in twenty years should not have to
+# resolve a dependency graph. There are no runtime dependencies here and there
+# should never be any: the whole project is standard library plus three
+# vendored binaries.
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "digital-legacy-encryption"
+version = "2.0.0"
+description = "Encrypt a document so that N of M keyholders, together, can open it"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Justin Venetucci" }]
+keywords = ["age", "shamir", "secret-sharing", "encryption", "digital-legacy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = []
+
+[project.scripts]
+digital-legacy = "digital_legacy.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/justin-venetucci/digital-legacy-encryption"
+
+[tool.setuptools]
+package-dir = { "" = "internals" }
+
+[tool.setuptools.packages.find]
+where = ["internals"]
+include = ["digital_legacy*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "S", "C4", "SIM"]
+ignore = [
+    "S404",  # subprocess is the entire point of this project
+    "S603",  # every call site uses a fixed argv list, never a shell string
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # assertions are what a test suite is made of
