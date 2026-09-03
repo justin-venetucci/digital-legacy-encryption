@@ -91,6 +91,20 @@ substituted `age` could exfiltrate the document or encrypt to an attacker's key.
   `doctor` reports when one has changed since. That detects drift, not an
   attacker who was present from the start.
 
+## Changing the keyholders
+
+`reseal` re-encrypts a document for a different set of people. Two things about
+it are worth understanding:
+
+- **It deletes the old encrypted file, and must.** Shamir shares cannot be
+  revoked; the only thing that stops a removed keyholder is the disappearance of
+  the ciphertext their key opens. If you have copies elsewhere — a USB stick, a
+  cloud drive, a backup — those copies are still readable with the old keys, and
+  `reseal` cannot reach them. Destroy them too, or accept that the old
+  arrangement persists wherever they live.
+- **It cannot un-read what was already read.** Anyone who has already decrypted
+  and kept a copy still has it. Resealing changes future access, not past.
+
 ## Choosing an arrangement
 
 The cryptography is the reliable part. Estates fail on the human side.

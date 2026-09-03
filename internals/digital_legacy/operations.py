@@ -24,7 +24,12 @@ from typing import Callable
 
 from . import agekeys, sss
 from .agekeys import KeyPair
-from .errors import DecryptionError, EncryptionError, VerificationError
+from .errors import (
+    DecryptionError,
+    DigitalLegacyError,
+    EncryptionError,
+    VerificationError,
+)
 from .policy import Policy
 from .toolchain import Toolchain
 from .vault import Vault, VaultEntry, now_iso, sha256_file, unique_path
@@ -389,3 +394,162 @@ def default_output_dir() -> Path:
     """
     desktop = Path.home() / "Desktop"
     return desktop if desktop.is_dir() else Path.home()
+
+
+# --------------------------------------------------------------------------
+# Resealing -- changing who holds the keys
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class ResealResult:
+    encrypt: EncryptResult
+    replaced: str
+    old_ciphertext_removed: bool
+    warning: str = ""
+    """Note: stale key files are *not* computed here.
+
+    They can only be identified once the new share files have been written,
+    because a reseal that reuses a keyholder's name overwrites their old file
+    in place. Call :func:`stale_key_files` after writing them.
+    """
+
+
+def reseal_entry(
+    toolchain: Toolchain,
+    vault: Vault,
+    entry: VaultEntry,
+    secret_keys: Sequence[str],
+    new_policy: Policy,
+    new_keypairs: Sequence[KeyPair],
+    *,
+    remove_old: bool = True,
+    when: str | None = None,
+    progress: Progress | None = None,
+) -> ResealResult:
+    """Re-encrypt a document for a different set of keyholders.
+
+    Over the decades a legacy document is meant to survive, the people holding
+    its keys change: someone dies, moves away, falls out with the family, or
+    simply loses their copy.  Shamir cannot add or remove a share after the
+    fact -- the threshold is sealed into the ciphertext -- so the only way to
+    change the arrangement is to decrypt and encrypt again. This does that with
+    the plaintext never leaving a scrubbed temporary directory.
+
+    **The old ciphertext must go.** If it is left in place, every removed
+    keyholder can still open it with the key they already have, and the reseal
+    accomplishes nothing but a false sense of security. ``remove_old=False``
+    exists only for a caller who has arranged to destroy it another way; the
+    result says plainly which happened.
+    """
+    say = progress or _noop
+    new_policy.validate()
+    if not secret_keys:
+        raise DecryptionError("Resealing needs the current keys.")
+
+    source_path = vault.entry_path(entry)
+    if not source_path.exists():
+        raise DecryptionError(
+            f"The encrypted document is missing: {entry.ciphertext_name}"
+        )
+
+    with sss.secure_tempdir("digital_legacy_reseal_") as workdir:
+        say("Opening the document with the current keys")
+        recovered = decrypt_entry(
+            toolchain,
+            vault,
+            entry,
+            secret_keys,
+            workdir,
+            when=when,
+            progress=progress,
+        )
+
+        # Restore the original filename so the new ciphertext, and therefore
+        # every future beneficiary, keeps the document's real name rather than
+        # the "[SENSITIVE] ... - Decrypted ..." working title.
+        original = workdir / (entry.original_name or recovered.name)
+        if original != recovered:
+            recovered.rename(original)
+
+        say("Encrypting again for the new keyholders")
+        result = encrypt_and_verify(
+            toolchain,
+            original,
+            vault,
+            new_policy,
+            new_keypairs,
+            when=when,
+            progress=progress,
+            require_verification=bool(new_keypairs),
+        )
+        agekeys.shred(original)
+
+    warning = ""
+    removed = False
+    if remove_old:
+        say("Removing the previous encrypted copy")
+        try:
+            source_path.unlink()
+            removed = True
+        except OSError as exc:  # pragma: no cover - permissions, locks
+            warning = (
+                f"The previous encrypted file could not be deleted ({exc}). "
+                "Delete it yourself: until it is gone, anyone holding an old "
+                "key can still open it."
+            )
+    else:
+        warning = (
+            "The previous encrypted file was kept. Anyone holding an old key "
+            "can still open it, so this reseal does not remove their access "
+            "until that file is destroyed."
+        )
+
+    if removed:
+        # The new file had to dodge the old one's name while both existed, so
+        # it picked up a "(1)". Now that the old one is gone, take the plain
+        # name back rather than leaving a counter that means nothing.
+        preferred = vault.path / entry.ciphertext_name
+        if not preferred.exists() and result.path != preferred:
+            try:
+                result.path.rename(preferred)
+                result.path = preferred
+                result.entry.ciphertext_name = preferred.name
+            except OSError:  # pragma: no cover - defensive
+                pass
+
+    return ResealResult(
+        encrypt=result,
+        replaced=entry.ciphertext_name,
+        old_ciphertext_removed=removed,
+        warning=warning,
+    )
+
+
+def stale_key_files(keys_dir: Path, policy: Policy) -> list[Path]:
+    """Key files that the current policy no longer recognises.
+
+    Call this *after* writing the new shares: a reseal that keeps a
+    keyholder's name overwrites their file in place, and running the check
+    first would name files that are about to be replaced.
+
+    Reported rather than deleted.  These files hold secrets, deleting one is
+    irreversible, and the folder could contain a share for a different vault
+    the owner keeps there -- shredding that on a guess would destroy something
+    unrecoverable.  Naming them lets the owner clear them out deliberately.
+    """
+    keys_dir = Path(keys_dir)
+    if not keys_dir.is_dir():
+        return []
+    stale: list[Path] = []
+    for path in sorted(keys_dir.glob("*.yaml")):
+        try:
+            declared = agekeys.read_key_file(path).declared_public_key
+        except DigitalLegacyError:
+            # A file we cannot read is not evidence of a stale share; `doctor`
+            # reports unreadable key files, and guessing here could name a
+            # perfectly good key as dead.
+            continue
+        if declared and declared not in policy.shares:
+            stale.append(path)
+    return stale

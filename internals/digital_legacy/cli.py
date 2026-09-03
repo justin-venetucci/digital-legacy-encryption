@@ -106,6 +106,40 @@ def build_parser() -> argparse.ArgumentParser:
         "--document", help="which encrypted file to open, when there are several"
     )
 
+    res = add(
+        "reseal",
+        help="re-encrypt for a different set of keyholders",
+        description=(
+            "Replace the keyholders on an existing document. Needs enough of "
+            "the current keys to open it. The old encrypted file is deleted, "
+            "because anyone holding an old key could still open it otherwise."
+        ),
+    )
+    res.add_argument(
+        "--key",
+        action="append",
+        default=[],
+        dest="keys",
+        type=Path,
+        metavar="PATH",
+        help="a current key file; repeat until the threshold is met",
+    )
+    res.add_argument("--shares", type=int, help="how many keys to create")
+    res.add_argument("--threshold", type=int, help="how many of them are needed")
+    res.add_argument(
+        "--name", action="append", default=[], dest="names", metavar="LABEL",
+        help="new keyholder name; repeat once per share",
+    )
+    res.add_argument("--owner", default="", help="your name, for the letters")
+    res.add_argument(
+        "--keep-old-file",
+        action="store_true",
+        help="do not delete the previous encrypted file (leaves old keys working)",
+    )
+    res.add_argument(
+        "--document", help="which encrypted file to reseal, when there are several"
+    )
+
     doc = add("doctor", help="check this installation and vault")
     doc.add_argument(
         "--deep",
@@ -148,6 +182,8 @@ def main(argv: list[str] | None = None, *, layout: Layout | None = None) -> int:
             return cmd_encrypt(args, layout, console)
         if command == "decrypt":
             return cmd_decrypt(args, layout, console)
+        if command == "reseal":
+            return cmd_reseal(args, layout, console)
         if command == "doctor":
             return cmd_doctor(args, layout, console)
         if command == "check-key":
@@ -234,27 +270,14 @@ def cmd_encrypt(args, layout: Layout, console: Console) -> int:
     )
 
     if keypairs:
-        for keypair in keypairs:
-            agekeys.write_key_file(
-                layout.keys_out_dir / agekeys.key_file_name(keypair.label),
-                agekeys.render_key_file(
-                    keypair,
-                    threshold=policy.threshold,
-                    total_shares=policy.total_shares,
-                    owner=args.owner,
-                    document=result.entry.display_name,
-                ),
-            )
-        context = handoff.HandoffContext(
-            owner=args.owner,
-            document=result.entry.display_name,
-            policy=policy,
-            keypairs=keypairs,
-            created=(result.entry.encrypted_at or now_iso())[:10],
-        )
-        handoff.write_handoff_packet(layout.handoff_dir, context)
-        (vault.path / "READ ME FIRST.txt").write_text(
-            handoff.vault_readme(context), encoding="utf-8", newline="\n"
+        _write_shares_and_letters(
+            layout,
+            vault,
+            policy,
+            keypairs,
+            result.entry.display_name,
+            args.owner,
+            result.entry.encrypted_at or now_iso(),
         )
 
     console.ok(f"Encrypted to {result.path}")
@@ -276,20 +299,26 @@ def cmd_decrypt(args, layout: Layout, console: Console) -> int:
     vault = Vault(layout.encrypted_dir)
     policy = vault.load_policy()
 
-    entries = vault.entries()
-    if args.document:
-        matches = [e for e in entries if e.ciphertext_name == args.document]
-        if not matches:
-            raise DigitalLegacyError(
-                f"No encrypted document named {args.document!r} in {vault.path}."
-            )
-        entry = matches[0]
-    else:
-        entry = vault.sole_entry()
+    entry = _select_entry(vault, args.document)
+    secrets = _collect_secrets(toolchain, policy, args.keys, console)
 
+    output = operations.decrypt_entry(
+        toolchain,
+        vault,
+        entry,
+        secrets,
+        args.output or operations.default_output_dir(),
+        progress=lambda message: console.info(f"  {message}"),
+    )
+    console.ok(f"Decrypted to {output}")
+    return 0
+
+
+def _collect_secrets(toolchain, policy, paths, console) -> list[str]:
+    """Validate key files against the policy and return their secrets."""
     secrets: list[str] = []
     seen: set[str] = set()
-    for path in args.keys:
+    for path in paths:
         parsed = agekeys.read_key_file(path)
         public_key = agekeys.derive_public_key(toolchain, parsed.secret_key)
         if public_key not in policy.shares:
@@ -310,16 +339,143 @@ def cmd_decrypt(args, layout: Layout, console: Console) -> int:
             f"{given} {'was' if given == 1 else 'were'} given.",
             hint="Add another --key for each missing keyholder.",
         )
+    return secrets
 
-    output = operations.decrypt_entry(
+
+def _write_shares_and_letters(
+    layout: Layout,
+    vault: Vault,
+    policy: Policy,
+    keypairs: list,
+    document: str,
+    owner: str,
+    created: str,
+) -> None:
+    """Write the key files, the per-keyholder letters, and READ ME FIRST."""
+    for keypair in keypairs:
+        agekeys.write_key_file(
+            layout.keys_out_dir / agekeys.key_file_name(keypair.label),
+            agekeys.render_key_file(
+                keypair,
+                threshold=policy.threshold,
+                total_shares=policy.total_shares,
+                owner=owner,
+                document=document,
+            ),
+        )
+    context = handoff.HandoffContext(
+        owner=owner,
+        document=document,
+        policy=policy,
+        keypairs=keypairs,
+        created=created[:10],
+    )
+    handoff.write_handoff_packet(layout.handoff_dir, context)
+    (vault.path / "READ ME FIRST.txt").write_text(
+        handoff.vault_readme(context), encoding="utf-8", newline="\n"
+    )
+
+
+def _select_entry(vault: Vault, name: str | None):
+    if not name:
+        return vault.sole_entry()
+    matches = [e for e in vault.entries() if e.ciphertext_name == name]
+    if not matches:
+        raise DigitalLegacyError(
+            f"No encrypted document named {name!r} in {vault.path}."
+        )
+    return matches[0]
+
+
+def cmd_reseal(args, layout: Layout, console: Console) -> int:
+    """Re-encrypt an existing document for a new set of keyholders."""
+    if not args.keys:
+        raise DigitalLegacyError(
+            "Resealing needs the current keys.",
+            hint="Pass one --key for each of the keyholders taking part, at "
+            "least as many as the current threshold.",
+        )
+
+    toolchain = Toolchain.discover(layout.binaries_dir)
+    vault = Vault(layout.encrypted_dir)
+    old_policy = vault.load_policy()
+    entry = _select_entry(vault, args.document)
+    secrets = _collect_secrets(toolchain, old_policy, args.keys, console)
+
+    total = args.shares or old_policy.total_shares
+    threshold = args.threshold if args.threshold is not None else old_policy.threshold
+    names = list(args.names) or [f"Key{i + 1}" for i in range(total)]
+    if len(names) != total:
+        raise DigitalLegacyError(
+            f"--shares is {total} but {len(names)} --name value(s) were given."
+        )
+
+    keypairs = [
+        agekeys.generate(toolchain, label=agekeys.sanitise_label(n)) for n in names
+    ]
+    new_policy = Policy(
+        threshold=threshold, shares=[k.public_key for k in keypairs]
+    ).validate()
+
+    result = operations.reseal_entry(
         toolchain,
         vault,
         entry,
         secrets,
-        args.output or operations.default_output_dir(),
+        new_policy,
+        keypairs,
+        remove_old=not args.keep_old_file,
         progress=lambda message: console.info(f"  {message}"),
     )
-    console.ok(f"Decrypted to {output}")
+
+    new_policy.save(vault.path / "recipients.yaml")
+    vault.save_manifest(
+        Manifest(
+            owner=args.owner,
+            threshold=new_policy.threshold,
+            keyholders=[
+                {
+                    "label": k.label,
+                    "public_key": k.public_key,
+                    "fingerprint": k.fingerprint(),
+                }
+                for k in keypairs
+            ],
+            binaries=toolchain.fingerprints(),
+            entries=[result.encrypt.entry],
+        )
+    )
+    _write_shares_and_letters(
+        layout,
+        vault,
+        new_policy,
+        keypairs,
+        result.encrypt.entry.display_name,
+        args.owner,
+        result.encrypt.entry.encrypted_at or now_iso(),
+    )
+
+    console.ok(f"Resealed as {result.encrypt.path.name}")
+    if result.encrypt.verified:
+        console.ok(f"Recovery proven: {result.encrypt.verification_detail}")
+    if result.old_ciphertext_removed:
+        console.info(f"Removed the previous file: {result.replaced}")
+    if result.warning:
+        console.warn(result.warning)
+    console.blank()
+    console.warn(
+        "Every previously issued key is now useless. Hand out the new key "
+        f"files in {layout.keys_out_dir} and tell the old keyholders their "
+        "copy no longer works."
+    )
+    stale = operations.stale_key_files(layout.keys_out_dir, new_policy)
+    if stale:
+        console.blank()
+        console.warn(
+            "These key files are left over from the old arrangement and no "
+            "longer open anything. Delete them so nobody hands one out:"
+        )
+        console.bullets([p.name for p in stale], "dark_yellow")
     return 0
 
 

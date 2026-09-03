@@ -435,3 +435,127 @@ class CommandLineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@requires_binaries
+class ResealTests(unittest.TestCase):
+    """Replacing the keyholders on a document that already exists.
+
+    Shamir cannot add or remove a share after the fact, so the only way to
+    change who can open a document is to decrypt and encrypt again. Over the
+    decades this tool is meant to cover, that will be needed.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.layout = make_layout(self.root)
+        guard_not_the_real_repo(self.layout)
+        self.source = self.root / "Will.txt"
+        self.source.write_text("the estate passes to", encoding="utf-8")
+        self.cli(
+            ["encrypt", "--no-colour", "--quiet", "--file", str(self.source),
+             "--shares", "3", "--threshold", "2",
+             "--name", "Alice", "--name", "Bob", "--name", "Carol"]
+        )
+        self.keys = self.current_keys()
+        self.carol_old = self.root / "carol-old.yaml"
+        self.carol_old.write_bytes(self.keys["Carol"].read_bytes())
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def cli(self, argv):
+        self.output = io.StringIO()
+        with contextlib.redirect_stdout(self.output):
+            return cli_main(argv, layout=self.layout)
+
+    def current_keys(self):
+        return {
+            p.stem.split(" - ")[-1]: p
+            for p in self.layout.keys_out_dir.glob("*.yaml")
+        }
+
+    def reseal(self, *extra):
+        return self.cli(
+            ["reseal", "--no-colour", "--quiet",
+             "--key", str(self.keys["Alice"]), "--key", str(self.keys["Bob"]),
+             "--shares", "3", "--threshold", "2",
+             "--name", "Alice", "--name", "Bob", "--name", "Dad", *extra]
+        )
+
+    def test_reseal_replaces_the_keyholders(self):
+        self.assertEqual(self.reseal(), 0, self.output.getvalue())
+        new_keys = self.current_keys()
+        self.assertIn("Dad", new_keys)
+
+        out = self.root / "out"
+        self.assertEqual(
+            self.cli(["decrypt", "--no-colour", "--quiet",
+                      "--key", str(new_keys["Dad"]), "--key", str(new_keys["Bob"]),
+                      "--output", str(out)]),
+            0,
+            self.output.getvalue(),
+        )
+        written = list(out.glob("*"))
+        self.assertEqual(written[0].read_text(encoding="utf-8"), "the estate passes to")
+
+    def test_the_removed_keyholder_can_no_longer_open_it(self):
+        """The whole point. If this fails the reseal achieved nothing."""
+        self.reseal()
+        self.assertEqual(
+            self.cli(["check-key", "--no-colour", str(self.carol_old)]), 1
+        )
+        self.assertEqual(
+            self.cli(["decrypt", "--no-colour", "--quiet",
+                      "--key", str(self.carol_old),
+                      "--key", str(self.current_keys()["Bob"]),
+                      "--output", str(self.root / "nope")]),
+            1,
+        )
+
+    def test_the_old_ciphertext_is_deleted(self):
+        """Left in place, every old key still opens it and nothing changed."""
+        before = {p.name for p in self.layout.encrypted_dir.glob("*.age")}
+        self.reseal()
+        after = {p.name for p in self.layout.encrypted_dir.glob("*.age")}
+        self.assertEqual(len(after), 1)
+        self.assertEqual(after, before, "the plain filename should be reclaimed")
+
+    def test_keeping_the_old_file_is_reported_as_leaving_access_open(self):
+        self.reseal("--keep-old-file")
+        self.assertEqual(len(list(self.layout.encrypted_dir.glob("*.age"))), 2)
+        self.assertIn("can still open it", self.output.getvalue())
+
+    def test_stale_key_files_are_named_but_not_deleted(self):
+        """Deleting a secret on a guess is irreversible; naming it is not."""
+        self.reseal()
+        text = self.output.getvalue()
+        self.assertIn("Key for Digital Legacy - Carol.yaml", text)
+        self.assertNotIn("Key for Digital Legacy - Alice.yaml", text)
+        self.assertTrue(self.keys["Carol"].exists(), "must not delete key files")
+
+    def test_reseal_without_enough_keys_is_refused(self):
+        code = self.cli(
+            ["reseal", "--no-colour", "--quiet", "--key", str(self.keys["Alice"]),
+             "--shares", "2", "--threshold", "2", "--name", "A", "--name", "B"]
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("2 keys are needed", self.output.getvalue())
+
+    def test_reseal_with_no_keys_at_all_explains_what_is_needed(self):
+        self.assertEqual(self.cli(["reseal", "--no-colour", "--quiet"]), 1)
+        self.assertIn("needs the current keys", self.output.getvalue())
+
+    def test_reseal_can_change_the_threshold(self):
+        code = self.cli(
+            ["reseal", "--no-colour", "--quiet",
+             "--key", str(self.keys["Alice"]), "--key", str(self.keys["Bob"]),
+             "--shares", "4", "--threshold", "3",
+             "--name", "A", "--name", "B", "--name", "C", "--name", "D"]
+        )
+        self.assertEqual(code, 0, self.output.getvalue())
+        from digital_legacy.policy import Policy
+
+        policy = Policy.load(self.layout.encrypted_dir / "recipients.yaml")
+        self.assertEqual((policy.threshold, policy.total_shares), (3, 4))

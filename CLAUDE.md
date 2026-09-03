@@ -31,6 +31,8 @@ python internals/scripts/decrypt.py --key K1.yaml --key K2.yaml --output DIR
 python internals/scripts/encrypt.py check-key FILE
 python internals/scripts/encrypt.py inspect
 python internals/scripts/encrypt.py handoff
+python internals/scripts/encrypt.py reseal --key K1 --key K2 \
+       --shares 3 --threshold 2 --name Alice --name Bob --name Dad
 ```
 
 Root-level `.bat` / `.command` / `.sh` wrappers are the shipped entry points.
@@ -128,6 +130,14 @@ caught from age's stderr, which also shreds the empty output file age created.
 
 Output goes to the Desktop as `[SENSITIVE] <name> - Decrypted <date><ext>`,
 falling back to the home directory when there is no Desktop.
+
+**Reseal** — decrypt with the current keys into a scrubbed temp dir, re-encrypt
+under a new policy, verify, then delete the old ciphertext. Deleting it is not
+optional politeness: leaving it means every removed keyholder still has access
+and the reseal accomplished nothing. Stale key files are *named*, never deleted
+— the folder may hold a share for another vault, and destroying a secret on a
+guess is irreversible. The staleness check must run *after* the new shares are
+written, or it names files that are about to be overwritten.
 
 ### Conventions to preserve
 

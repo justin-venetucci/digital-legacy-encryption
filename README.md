@@ -116,7 +116,26 @@ will actually look: a USB stick with your will, a cloud drive, a home safe. It
 is safe to store openly. Then **tell someone it exists** — a perfectly built
 system nobody knows about is the most common way this fails.
 
-### 4. Check it once a year
+### 4. When a keyholder changes
+
+People move, fall out, die, or lose their copy. Shamir cannot add or remove a
+share after the fact — the threshold is sealed into the ciphertext — so the only
+way to change the arrangement is to encrypt again:
+
+```bash
+python internals/scripts/encrypt.py reseal --key K1.yaml --key K2.yaml \
+       --shares 3 --threshold 2 --name Alice --name Bob --name Dad
+```
+
+It opens the document with the keys you supply, re-encrypts it for the new
+keyholders, proves the result recovers, and **deletes the old encrypted file** —
+because anyone holding an old key could still open that. It then names the key
+files that no longer open anything, so you do not hand out a dead one. It never
+deletes a key file itself: destroying a secret on a guess is not reversible.
+
+The plaintext never leaves a scrubbed temporary folder during any of this.
+
+### 5. Check it once a year
 
 ```bash
 python internals/scripts/encrypt.py --doctor
@@ -158,6 +177,8 @@ python internals/scripts/encrypt.py --file DOC --shares 3 --threshold 2 \
        --name Alice --name Bob --name Carol --owner "Your Name"
 python internals/scripts/decrypt.py --key K1.yaml --key K2.yaml --output DIR
 
+python internals/scripts/encrypt.py reseal --key K1.yaml --key K2.yaml \
+       --shares 3 --threshold 2 --name Alice --name Bob --name Dad
 python internals/scripts/encrypt.py --doctor [--deep]  # health check
 python internals/scripts/encrypt.py check-key FILE     # is this key still valid?
 python internals/scripts/encrypt.py inspect            # what the .age file requires
@@ -232,6 +253,9 @@ themselves when those are absent — so a green run on a fresh clone means
 
 Python 3.9 or newer, a working Tk for the file chooser (optional — the tool
 falls back to typing a path), and the three binaries above.
+
+The 3.9 floor is enforced by the linter's target version and a scan for newer
+syntax; the suite is actually executed on 3.12 and 3.14.
 
 ## License
 
