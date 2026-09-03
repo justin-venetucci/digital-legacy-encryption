@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------------
+# SECRETS — never commit these.
+# ---------------------------------------------------------------------------
+# Private key shares. The directory name is the instruction: distribute them,
+# then delete them. They are the only copies of the secret material.
+internals/age-keys-DISTRIBUTE-AND-DELETE/
+internals/handoff/
+
+# Real vault contents. `internals/encrypted/` ships with a *sample* vault
+# (Sample-TestPDF…age + recipients.yaml) that is intentionally tracked; any
+# other ciphertext or config that lands there is the owner's real data.
+internals/encrypted/*
+!internals/encrypted/Sample-TestPDF - Encrypted 2025-05-26.pdf.age
+!internals/encrypted/recipients.yaml
+!internals/encrypted/vault.json
+
+# Decrypted output, wherever it lands.
+*[SENSITIVE]*
+*.decrypted
+
+# ---------------------------------------------------------------------------
+# Vendored binaries — licensed separately, platform specific, ~8-20 MB each.
+# ---------------------------------------------------------------------------
+internals/binaries/*
+!internals/binaries/*.placeholder
+!internals/binaries/LICENSE.txt
+!internals/binaries/README.md
+!internals/binaries/checksums.txt
+
+# ---------------------------------------------------------------------------
+# Python / editor / OS noise
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,16 @@
+# Normalise text in the repository; check out with platform-native endings.
+* text=auto
+
+# Shell wrappers must keep LF even when checked out on Windows — a CRLF
+# shebang line makes macOS/Linux report "bad interpreter: /bin/bash^M".
+*.sh    text eol=lf
+*.command text eol=lf
+
+# Batch files must keep CRLF; cmd.exe mis-parses LF-only labels and blocks.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binary-ish payloads git must never touch.
+*.age   binary
+*.pdf   binary
+*.exe   binary
