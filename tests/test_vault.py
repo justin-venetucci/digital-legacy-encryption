@@ -7,8 +7,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from support import PUBLIC_KEYS
-
 from digital_legacy.errors import VaultError
 from digital_legacy.policy import Policy
 from digital_legacy.vault import (
@@ -18,6 +16,7 @@ from digital_legacy.vault import (
     VaultEntry,
     unique_path,
 )
+from support import PUBLIC_KEYS
 
 
 class FilenameTests(unittest.TestCase):
@@ -168,7 +167,11 @@ class VaultTests(unittest.TestCase):
         self.add_ciphertext("A - Encrypted 2026-01-01.pdf.age")
         self.add_ciphertext("B - Encrypted 2026-01-02.txt.age")
         self.vault.save_manifest(
-            Manifest(entries=[VaultEntry(ciphertext_name="A - Encrypted 2026-01-01.pdf.age")])
+            Manifest(
+                entries=[
+                    VaultEntry(ciphertext_name="A - Encrypted 2026-01-01.pdf.age")
+                ]
+            )
         )
         names = {e.ciphertext_name for e in self.vault.entries()}
         self.assertIn("B - Encrypted 2026-01-02.txt.age", names)

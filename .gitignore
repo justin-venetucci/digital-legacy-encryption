@@ -13,6 +13,7 @@ internals/encrypted/*
 !internals/encrypted/Sample-TestPDF - Encrypted 2025-05-26.pdf.age
 !internals/encrypted/recipients.yaml
 !internals/encrypted/vault.json
+!internals/encrypted/READ ME FIRST.txt
 
 # Decrypted output, wherever it lands.
 *[SENSITIVE]*

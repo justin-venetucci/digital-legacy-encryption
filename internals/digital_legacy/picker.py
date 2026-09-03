@@ -17,8 +17,8 @@ empty location.  Start directories here are checked before being used.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from .console import Console
 from .errors import OperationCancelled

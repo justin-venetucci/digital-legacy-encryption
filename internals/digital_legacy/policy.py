@@ -48,7 +48,7 @@ class Policy:
 
     # -- validation -------------------------------------------------------
 
-    def validate(self) -> "Policy":
+    def validate(self) -> Policy:
         if not self.shares:
             raise PolicyError(
                 "The key configuration does not list any keys.",
@@ -141,7 +141,8 @@ class Policy:
         lines = [
             "# Sharing policy for the Digital Legacy Encryption Suite.",
             "#",
-            f"# Any {self.threshold} of these {self.total_shares} keys, brought together, can decrypt",
+            f"# Any {self.threshold} of these {self.total_shares} keys, brought "
+            "together, can decrypt",
             "# the document. Keep this file with the encrypted document; it holds",
             "# public keys only and no secrets.",
             "#",
@@ -155,7 +156,7 @@ class Policy:
         return "\n".join(lines) + "\n"
 
     @classmethod
-    def parse(cls, text: str) -> "Policy":
+    def parse(cls, text: str) -> Policy:
         """Parse the subset of YAML this tool writes, strictly.
 
         Handles: comments, blank lines, ``threshold: N``, and a ``shares:``
@@ -253,7 +254,7 @@ class Policy:
     # -- files ------------------------------------------------------------
 
     @classmethod
-    def load(cls, path: Path) -> "Policy":
+    def load(cls, path: Path) -> Policy:
         path = Path(path)
         try:
             text = path.read_text(encoding="utf-8-sig")

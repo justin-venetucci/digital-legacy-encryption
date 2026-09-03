@@ -17,9 +17,9 @@ Two directions:
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Sequence
 
 from .agekeys import harden, shred
 from .errors import DecryptionError, EncryptionError, ToolchainError

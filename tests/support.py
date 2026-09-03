@@ -29,7 +29,7 @@ if str(INTERNALS) not in sys.path:
 
 from digital_legacy.errors import ToolchainError  # noqa: E402
 from digital_legacy.layout import Layout  # noqa: E402
-from digital_legacy.toolchain import ToolResult, Toolchain  # noqa: E402
+from digital_legacy.toolchain import Toolchain, ToolResult  # noqa: E402
 
 # A handful of syntactically valid age keys, fixed so tests are deterministic.
 # Bech32 alphabet: no 1, b, i or o after the separator.
@@ -69,14 +69,18 @@ class FakeToolchain(Toolchain):
         self.mapping = dict(zip(SECRET_KEYS, PUBLIC_KEYS))
         self.fail_on: str | None = None
 
-    def run(self, executable, *args, stdin=None, check=True, timeout=None) -> ToolResult:
+    def run(
+        self, executable, *args, stdin=None, check=True, timeout=None
+    ) -> ToolResult:
         name = Path(executable).name
         self.calls.append((name, *args))
 
         if self.fail_on and self.fail_on in name:
             result = ToolResult((name,), 1, "", "simulated failure")
             if check:
-                raise ToolchainError(f"{name} reported an error.", hint="simulated failure")
+                raise ToolchainError(
+                    f"{name} reported an error.", hint="simulated failure"
+                )
             return result
 
         if name.startswith("age-keygen"):

@@ -55,3 +55,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # assertions are what a test suite is made of
+# handoff.py is mostly prose templates: whole paragraphs interpolated into
+# f-strings. Wrapping those to 88 columns makes the letter text unreadable in
+# the source, which is the one place it needs to stay editable.
+"internals/digital_legacy/handoff.py" = ["E501"]

@@ -33,7 +33,7 @@ class Layout:
     root: Path
 
     @classmethod
-    def discover(cls, start: Path | None = None) -> "Layout":
+    def discover(cls, start: Path | None = None) -> Layout:
         """Find the project root from the installed package location.
 
         ``internals/digital_legacy/layout.py`` -> root is two levels up.  When

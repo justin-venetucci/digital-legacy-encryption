@@ -1,0 +1,72 @@
+========================================================================
+  READ ME FIRST
+========================================================================
+
+  This folder holds an encrypted document belonging to Sample Owner,
+  locked on 2025-05-26. You cannot open it by double-clicking it, and no
+  password will help. It needs keys.
+
+------------------------------------------------------------------------
+  WHAT YOU NEED
+------------------------------------------------------------------------
+
+  There are 3 key files in existence, each held by a different person.
+  Any 2 of them, brought together, will unlock Sample-TestPDF.pdf. It
+  does not matter which 2.
+
+  The keyholders are:
+    - Key1
+    - Key2
+    - Key3-WithCustomName
+
+  Each of them was given a file named 'Key for Digital Legacy -
+  <name>.yaml' and a letter explaining it. You need them to bring, or
+  send you, that file.
+
+------------------------------------------------------------------------
+  HOW TO OPEN THE DOCUMENT
+------------------------------------------------------------------------
+
+  1. Copy this whole folder onto a computer you trust. Do not use a
+     shared or public one -- the document will be readable on it
+     afterwards.
+
+  2. Collect the key files. You need 2 of them, from any of the people
+     listed above. Put them somewhere you can find them, such as the
+     Desktop.
+
+  3. Run the program in the top folder:
+
+       Windows:  Decrypt My Information-Windows.bat
+       macOS:    Decrypt My Information-macOS.command
+       Linux:    Decrypt My Information-Linux.sh
+
+  4. Follow the prompts. It will ask you to choose each key file in
+     turn, and will tell you if one is the wrong file or has been
+     damaged. When it has enough, it writes the decrypted document to
+     your Desktop.
+
+------------------------------------------------------------------------
+  IF SOMETHING GOES WRONG
+------------------------------------------------------------------------
+
+  'This tool needs age.exe...' -- the three helper programs are missing
+  from internals/binaries. See README.md in the top folder for where to
+  get them.
+
+  'These keys cannot open this document' -- the keys are valid but
+  belong to a different encrypted file. Check you have the right folder.
+
+  Fewer than 2 keys can be found -- there is no way around this, by
+  design. The document cannot be opened. Nobody, including the
+  software's authors, can recover it.
+
+------------------------------------------------------------------------
+  AFTERWARDS
+------------------------------------------------------------------------
+
+  The decrypted file is named starting with [SENSITIVE]. It is an
+  ordinary, readable copy of a private document. Store it as carefully
+  as you would the original, and delete it when you are finished.
+
+========================================================================

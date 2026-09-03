@@ -9,6 +9,7 @@ the holder what they are looking at, which age ignores.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import secrets
@@ -133,7 +134,9 @@ def derive_public_key(toolchain: Toolchain, secret_key: str) -> str:
     are readable by any other user on the machine.
     """
     try:
-        result = toolchain.run(toolchain.age_keygen, "-y", stdin=secret_key, check=False)
+        result = toolchain.run(
+            toolchain.age_keygen, "-y", stdin=secret_key, check=False
+        )
     except ToolchainError as exc:  # timeout, missing binary, ...
         raise KeyFileError(exc.message, hint=exc.hint) from exc
 
@@ -305,10 +308,8 @@ def harden(path: Path) -> bool:
     and grant the current account alone, via ``icacls``.
     """
     path = Path(path)
-    try:
+    with contextlib.suppress(OSError):  # best effort; see SECURITY.md
         os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
-    except OSError:  # pragma: no cover - best effort
-        pass
 
     if os.name != "nt":
         return True
@@ -320,7 +321,10 @@ def harden(path: Path) -> bool:
         import subprocess
 
         completed = subprocess.run(
-            ["icacls", str(path), "/inheritance:r", "/grant:r", f"{account}:F"],
+            # icacls is resolved from PATH on purpose: it is a Windows system
+            # tool whose location differs across installs, and hard-coding
+            # System32 would break on a non-default SystemRoot.
+            ["icacls", str(path), "/inheritance:r", "/grant:r", f"{account}:F"],  # noqa: S607
             capture_output=True,
             text=True,
             timeout=20,
@@ -351,10 +355,8 @@ def shred(path: Path, passes: int = 1) -> None:
     except OSError:
         pass
     finally:
-        try:
+        with contextlib.suppress(OSError):
             path.unlink(missing_ok=True)
-        except OSError:  # pragma: no cover - best effort
-            pass
 
 
 def _now() -> str:

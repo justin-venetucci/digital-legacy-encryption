@@ -17,6 +17,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from digital_legacy import agekeys
+from digital_legacy.cli import main as cli_main
+from digital_legacy.console import Console
+from digital_legacy.vault import Vault
+from digital_legacy.wizards import DecryptWizard, EncryptWizard
 from support import (
     guard_not_the_real_repo,
     make_layout,
@@ -24,12 +29,6 @@ from support import (
     requires_binaries,
     strip_ansi,
 )
-
-from digital_legacy import agekeys
-from digital_legacy.cli import main as cli_main
-from digital_legacy.console import Console
-from digital_legacy.vault import Vault
-from digital_legacy.wizards import DecryptWizard, EncryptWizard
 
 
 class ScriptedConsole(Console):
@@ -263,8 +262,6 @@ class DecryptWizardTests(unittest.TestCase):
         entries = Vault(self.layout.encrypted_dir).entries()
         self.assertEqual(len(entries), 2)
 
-        target = sorted(e.ciphertext_name for e in entries).index("Will - Encrypted "
-            + entries[0].encrypted_at[:10] + ".pdf.age") if False else None
         code, console = self.run_wizard(
             [
                 "1",                       # choose the first document

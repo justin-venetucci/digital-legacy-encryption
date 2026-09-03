@@ -97,10 +97,11 @@ class VaultEntry:
         # Never stack the marker: a vault written by the old encryptor can hold
         # a ciphertext whose own name already begins with it.
         base = re.sub(r"^(\[SENSITIVE\]\s*)+", "", base).strip() or "document"
-        return f"[SENSITIVE] {base} - Decrypted {stamp}{self.original_suffix or '.bin'}"
+        suffix = self.original_suffix or ".bin"
+        return f"[SENSITIVE] {base} - Decrypted {stamp}{suffix}"
 
     @classmethod
-    def from_ciphertext(cls, path: Path) -> "VaultEntry":
+    def from_ciphertext(cls, path: Path) -> VaultEntry:
         """Best-effort metadata for a vault with no manifest.
 
         Used for vaults written by the pre-2.0 scripts.  The parsing is the part
@@ -110,7 +111,11 @@ class VaultEntry:
         """
         path = Path(path)
         name = path.name
-        stem = name[: -len(ENCRYPTED_SUFFIX)] if name.endswith(ENCRYPTED_SUFFIX) else path.stem
+        stem = (
+            name[: -len(ENCRYPTED_SUFFIX)]
+            if name.endswith(ENCRYPTED_SUFFIX)
+            else path.stem
+        )
 
         # Layout written by every version of this tool:
         #     "<original stem> - Encrypted <date>[ (n)]<original suffix>"
@@ -167,11 +172,13 @@ class Manifest:
 
     def to_json(self) -> str:
         payload = asdict(self)
-        payload["entries"] = [asdict(e) if not isinstance(e, dict) else e for e in self.entries]
+        payload["entries"] = [
+            e if isinstance(e, dict) else asdict(e) for e in self.entries
+        ]
         return json.dumps(payload, indent=2, ensure_ascii=False) + "\n"
 
     @classmethod
-    def from_json(cls, text: str) -> "Manifest":
+    def from_json(cls, text: str) -> Manifest:
         try:
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
@@ -193,8 +200,8 @@ class Manifest:
                 f"{MANIFEST_NAME} to fall back to reading the folder directly.",
             )
 
-        known = {f for f in cls.__dataclass_fields__}
-        entry_fields = {f for f in VaultEntry.__dataclass_fields__}
+        known = set(cls.__dataclass_fields__)
+        entry_fields = set(VaultEntry.__dataclass_fields__)
         entries = [
             VaultEntry(**{k: v for k, v in raw.items() if k in entry_fields})
             for raw in payload.get("entries", [])
@@ -268,7 +275,9 @@ class Vault:
         self.ensure()
         manifest.updated_at = now_iso()
         manifest.tool_version = __version__
-        self.manifest_path.write_text(manifest.to_json(), encoding="utf-8", newline="\n")
+        self.manifest_path.write_text(
+            manifest.to_json(), encoding="utf-8", newline="\n"
+        )
         return self.manifest_path
 
     # -- entries ----------------------------------------------------------

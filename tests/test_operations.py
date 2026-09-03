@@ -12,12 +12,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from support import FakeToolchain, real_toolchain, requires_binaries
-
 from digital_legacy import agekeys, operations
-from digital_legacy.errors import EncryptionError, VerificationError
+from digital_legacy.errors import (
+    DecryptionError,
+    DigitalLegacyError,
+    EncryptionError,
+    PolicyError,
+    VerificationError,
+)
 from digital_legacy.policy import Policy
 from digital_legacy.vault import Vault, sha256_file
+from support import FakeToolchain, real_toolchain, requires_binaries
 
 
 class EncryptGuardTests(unittest.TestCase):
@@ -63,7 +68,7 @@ class EncryptGuardTests(unittest.TestCase):
 
     def test_invalid_policy_is_refused_before_encrypting(self):
         bad = Policy(threshold=9, shares=self.policy.shares)
-        with self.assertRaises(Exception):
+        with self.assertRaises(PolicyError):
             operations.encrypt_document(self.toolchain, self.source(), self.vault, bad)
         self.assertEqual(list(self.vault.path.glob("*.age")), [])
 
@@ -81,7 +86,7 @@ class EncryptGuardTests(unittest.TestCase):
 
     def test_no_partial_file_survives_a_failed_encryption(self):
         self.toolchain.fail_on = "age"
-        with self.assertRaises(Exception):
+        with self.assertRaises(DigitalLegacyError):
             operations.encrypt_document(
                 self.toolchain, self.source(), self.vault, self.policy
             )
@@ -178,7 +183,7 @@ class RoundTripTests(unittest.TestCase):
                 result.entry,
                 [keypairs[i] for i in combo],
                 threshold=2,
-                rng=random.Random(0),
+                rng=random.Random(0),  # noqa: S311 - determinism, not secrecy
             )
             self.assertTrue(check.ok, f"{combo} failed: {check.detail}")
 
@@ -187,8 +192,6 @@ class RoundTripTests(unittest.TestCase):
         result = operations.encrypt_document(
             self.toolchain, self.source(), self.vault, policy
         )
-        from digital_legacy.errors import DecryptionError
-
         with self.assertRaises(DecryptionError):
             operations.decrypt_entry(
                 self.toolchain,
@@ -204,8 +207,6 @@ class RoundTripTests(unittest.TestCase):
             self.toolchain, self.source(), self.vault, policy
         )
         strangers = [agekeys.generate(self.toolchain) for _ in range(2)]
-        from digital_legacy.errors import DecryptionError
-
         with self.assertRaises(DecryptionError) as caught:
             operations.decrypt_entry(
                 self.toolchain,
@@ -223,7 +224,7 @@ class RoundTripTests(unittest.TestCase):
         )
         out = self.root / "out"
         strangers = [agekeys.generate(self.toolchain) for _ in range(2)]
-        with self.assertRaises(Exception):
+        with self.assertRaises(DecryptionError):
             operations.decrypt_entry(
                 self.toolchain,
                 self.vault,

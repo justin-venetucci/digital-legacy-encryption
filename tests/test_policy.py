@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import unittest
 
-from support import PUBLIC_KEYS
-
 from digital_legacy.errors import PolicyError
 from digital_legacy.policy import Policy
+from support import PUBLIC_KEYS
 
 
 def build(threshold: int = 2, count: int = 3) -> str:

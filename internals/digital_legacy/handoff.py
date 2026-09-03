@@ -14,10 +14,10 @@ plain text prints, survives, and needs no software to read.
 from __future__ import annotations
 
 import textwrap
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Sequence
 
 from .agekeys import KeyPair, key_file_name
 from .policy import Policy
@@ -87,6 +87,30 @@ class HandoffContext:
         return [k.label or "(unnamed)" for k in self.keypairs]
 
 
+def _when_the_time_comes(context: HandoffContext) -> str:
+    """The paragraph telling a keyholder what recovery will involve.
+
+    Built here rather than inline in the letter's f-string: the quoted program
+    name needs escaping, and a backslash inside an f-string expression is a
+    syntax error before Python 3.12 -- which would make this module unimportable
+    on every version this project claims to support.
+    """
+    if context.threshold <= 1:
+        return (
+            "Find the folder or drive holding the encrypted document. Open the "
+            "file called READ ME FIRST.txt inside it -- it explains the rest. "
+            "Your key alone is enough to open this document; no one else is "
+            "needed."
+        )
+    others = _count(context.threshold - 1, "other keyholder")
+    return (
+        "Find the folder or drive holding the encrypted document. Open the file "
+        "called READ ME FIRST.txt inside it -- it explains the rest. In short: "
+        f"you will contact {others}, run the program named "
+        '"Decrypt My Information", and select each key file when asked.'
+    )
+
+
 def keyholder_letter(context: HandoffContext, keypair: KeyPair) -> str:
     """The sheet that travels with one share.
 
@@ -137,7 +161,7 @@ def keyholder_letter(context: HandoffContext, keypair: KeyPair) -> str:
   WHEN THE TIME COMES
 {_rule('-')}
 
-{_wrap(f"Find the folder or drive holding the encrypted document. Open the file called READ ME FIRST.txt inside it -- it explains the rest. In short: you will contact {_count(context.threshold - 1, 'other keyholder')}, run the program named \"Decrypt My Information\", and select each key file when asked.", "  ") if context.threshold > 1 else _wrap("Find the folder or drive holding the encrypted document. Open the file called READ ME FIRST.txt inside it -- it explains the rest. Your key alone is enough to open this document; no one else is needed.", "  ")}
+{_wrap(_when_the_time_comes(context), '  ')}
 
 {_wrap(f"If a key has been lost, that is survivable, as long as at least {context.threshold} of the {context.total} still exist.", "  ")}
 

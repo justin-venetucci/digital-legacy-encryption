@@ -28,8 +28,9 @@ import shutil
 import sys
 import threading
 import time
+from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from typing import Callable, Iterable, Iterator, Sequence
+from typing import Callable
 
 from .errors import OperationCancelled
 

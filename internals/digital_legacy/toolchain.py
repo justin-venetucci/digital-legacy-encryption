@@ -63,7 +63,9 @@ class Toolchain:
         return f"{stem}.exe" if os.name == "nt" else stem
 
     @classmethod
-    def discover(cls, binaries_dir: Path, *, allow_path_fallback: bool = False) -> "Toolchain":
+    def discover(
+        cls, binaries_dir: Path, *, allow_path_fallback: bool = False
+    ) -> Toolchain:
         """Resolve the three binaries or explain, in one message, what is missing.
 
         Reporting every missing file at once matters: a beneficiary who fixes
@@ -120,7 +122,9 @@ class Toolchain:
         Absolute, for the exec.LookPath reason described in :meth:`discover`.
         """
         env = os.environ.copy()
-        env["PATH"] = str(Path(binaries_dir).resolve()) + os.pathsep + env.get("PATH", "")
+        env["PATH"] = (
+            str(Path(binaries_dir).resolve()) + os.pathsep + env.get("PATH", "")
+        )
         return env
 
     # -- execution --------------------------------------------------------

@@ -1,75 +1,163 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## What this is
 
-Two interactive terminal wizards that wrap the `age` CLI plus the `age-plugin-sss` Shamir Secret Sharing plugin, so that a sensitive document can be encrypted once and later decrypted only when *N of M* keyholders bring their key files together. `decrypt.py` is aimed at non-technical beneficiaries, which is why it is heavy on step banners, spinners, and per-error recovery prompts.
+A tool that encrypts one document so it can only be decrypted when *N of M*
+keyholders bring their key files together. It wraps the `age` CLI plus the
+`age-plugin-sss` Shamir Secret Sharing plugin.
+
+The decryption path is aimed at **non-technical beneficiaries**, probably
+grieving, using it once, with nobody to ask. That constraint drives most of the
+design: plain-language errors with actionable hints, a retry on every rejection,
+and printable paperwork explaining what a key file is.
 
 ## Commands
 
 ```bash
-python internals/scripts/encrypt.py    # encrypt a file, optionally generating new key shares
-python internals/scripts/decrypt.py    # collect key shares and decrypt
+python internals/scripts/encrypt.py            # guided encryption wizard
+python internals/scripts/decrypt.py            # guided decryption wizard
+python internals/scripts/encrypt.py --doctor   # health check (read-only)
+python tests/run_tests.py                      # the whole suite
 ```
 
-The root wrappers `Decrypt My Information-Windows.bat` / `Decrypt My Information-MacOS.sh` are the shipped entry points for beneficiaries. They activate a `.venv` at the repo root and use relative paths, so they only work when run with the repo root as the working directory, and only after a venv exists there. Nothing in the repo creates that venv.
-
-Sanity-check the vendored binaries (they are not in git — see below):
+Everything is also reachable non-interactively, which is how the suite drives it:
 
 ```bash
-internals/binaries/age --version
+python internals/scripts/encrypt.py --file DOC --shares 3 --threshold 2 \
+       --name Alice --name Bob --name Carol --owner "Name"
+python internals/scripts/decrypt.py --key K1.yaml --key K2.yaml --output DIR
+python internals/scripts/encrypt.py check-key FILE
+python internals/scripts/encrypt.py inspect
+python internals/scripts/encrypt.py handoff
 ```
 
-There is no test suite, linter, build step, CI, or `requirements.txt`. The only real verification is a manual round trip: run `encrypt.py` on a throwaway file, then `decrypt.py` with the generated keys.
-
-**These scripts cannot be run non-interactively.** Both block on `input()` and open Tk file-selection dialogs. Do not try to exercise them end to end from an agent session; verify changes by reading the code, by importing the module and calling individual methods, or by driving `age` / `age-plugin-sss` directly with the same arguments the scripts build.
+Root-level `.bat` / `.command` / `.sh` wrappers are the shipped entry points.
+They locate a Python themselves and no longer require a `.venv`.
 
 ## Architecture
 
-### Mirrored, deliberately duplicated scripts
+### One package, two thin entry points
 
-`internals/scripts/encrypt.py` (`DigitalLegacyEncryptor`) and `internals/scripts/decrypt.py` (`DigitalLegacyDecryptor`) are independent single-class scripts with no shared module. They repeat the same skeleton — path fields in `__init__`, then `set_up_paths_and_validation()` → `set_up_temp_directory()` → `prepare_environment()` → a `run()` that drives a numbered step wizard — and each carries its own copy of the UI helpers (`_print_colored`, banner, spinner/`show_processing_step`). A change to shared behavior (colors, banners, path layout, binary naming) usually has to be made twice. Keep them independent unless asked otherwise; self-containment is a design goal, not an oversight.
+`internals/digital_legacy/` holds everything. `internals/scripts/encrypt.py` and
+`decrypt.py` are ~40-line shims that add `internals/` to `sys.path` and call
+`digital_legacy.cli`; they exist at those paths because every wrapper and every
+set of instructions already points there.
 
-Step counting differs: `decrypt.py` computes `total_steps = threshold + 3` because it prompts once per required key, while `encrypt.py` hardcodes `total_steps = 5` and bumps `current_step` inline.
+| Module | Responsibility |
+|--------|----------------|
+| `errors.py` | One exception hierarchy. Every error carries a lay-reader `message` and an actionable `hint`. |
+| `console.py` | All terminal I/O. Colour (with Windows VT enabling), banners, step numbering, honest progress, validated prompts. |
+| `picker.py` | File selection: lazy Tk import, typed-path fallback. |
+| `layout.py` | Every "which folder?" answer. Honours `DIGITAL_LEGACY_ROOT`. |
+| `toolchain.py` | Binary discovery and the *only* way to run one. |
+| `agekeys.py` | Key generation, parsing, share files, permissions, shredding. |
+| `policy.py` | `recipients.yaml` parse / validate / render. |
+| `vault.py` | The encrypted folder, `vault.json`, integrity checks. |
+| `sss.py` | `age-plugin-sss` wrapper; secure temp directories. |
+| `operations.py` | encrypt / verify / decrypt orchestration. |
+| `handoff.py` | Printable letters and checklists. |
+| `doctor.py` | Read-only health check. |
+| `wizards.py` | The two guided flows. |
+| `cli.py` | argparse dispatch. |
+
+An earlier version of this project deliberately kept two independent, hand-copied
+scripts. That was reverted: the copies drifted and each grew defects the other
+lacked. The property worth preserving — a beneficiary needs nothing but a Python
+interpreter — comes from having **no third-party dependencies**, not from having
+two copies of the code.
 
 ### Standard library only
 
-No third-party imports anywhere, on purpose ("designed for long-term compatibility"). Consequences to preserve:
+No runtime dependencies, on purpose, and none should be added.
 
-- YAML is read with regex and written with f-string concatenation. There is no PyYAML dependency; don't add one.
-- File pickers use `tkinter.filedialog`, so a working Tk is an implicit runtime requirement.
+- YAML is parsed by a small strict subset parser in `policy.py`. Do not add
+  PyYAML. `recipients.yaml` must stay YAML because `age-plugin-sss` consumes it;
+  everything else this tool writes is JSON.
+- Tk is imported lazily. A missing Tk must degrade to a typed path, never crash.
+- Tests use `unittest`, not pytest, so the suite has the same footprint as the
+  shipped code.
 
 ### Binary discovery and the PATH trick
 
-Binaries live in `internals/binaries/` and are resolved relative to `__file__`, with `.exe` appended when `os.name == 'nt'`. `prepare_environment()` copies `os.environ`, prepends the binaries directory to `PATH`, and stores it as `self.env`; **every `subprocess.Popen` call must pass `env=self.env`**, because that is how the `age` binary locates the `age-plugin-sss` executable (age resolves plugins by looking up `age-plugin-<name>` on `PATH`).
+`age` finds plugins by looking up `age-plugin-<name>` on `PATH`, so every
+subprocess runs with the binaries directory prepended. `Toolchain.run` is the
+single code path for this and cannot forget it.
 
-The binaries are not committed — only `age.exe.placeholder`, `age-keygen.exe.placeholder`, `age-plugin-sss.exe.placeholder`, and the plugin's vendored `LICENSE.txt`. Both scripts fail up front with a "Missing required files" list if the real executables are absent, so that error is the expected state in a fresh clone.
+**The directory must be absolute.** Go's `exec.LookPath` refuses a hit that
+resolves inside the current directory (`"age-plugin-sss resolves to executable in
+current directory"`), so a relative `PATH` entry breaks decryption outright.
+`Toolchain.discover` and `build_env` both call `.resolve()`.
 
-### Single-file-by-convention in `internals/encrypted/`
+Binaries are not committed — only `*.placeholder` files and the vendored
+`LICENSE.txt`. A fresh clone therefore fails discovery with a checklist, and the
+integration tests skip themselves. That is the expected state.
 
-`internals/encrypted/` must hold exactly one `*.age` file and exactly one `*.yaml` file; both scripts `glob()` for them and treat *more than one* as a fatal error, never picking a "default" name. `decrypt.py` errors if either is missing; `encrypt.py` instead writes a blank `recipients.yaml` skeleton when no yaml is present. Any feature that adds a second encrypted file or a second config in that folder breaks both scripts.
+### The vault
+
+`internals/encrypted/` holds the ciphertext, exactly one `*.yaml` policy file,
+and an optional `vault.json`.
+
+- **More than one `.yaml`** is still fatal — guessing which applies could encrypt
+  to the wrong people.
+- **More than one `.age`** is *not* fatal any more. The decrypt wizard asks which
+  to open. Running the old encryptor twice created this state and bricked the
+  vault permanently.
+- **`vault.json` is optional.** Pre-2.0 vaults still open through a corrected
+  filename parser, and a damaged manifest never blocks decryption.
+- Plaintext stem and suffix are stored *separately*. Never re-derive an extension
+  by splitting a display filename; that is the bug that produced files nothing
+  could open.
 
 ### Crypto data flow
 
-Encrypt: `age-keygen` once per share → public keys collected into `recipients.yaml` (`threshold:` scalar + `shares:` list of `age1…`) → `age-plugin-sss --generate-recipient recipients.yaml` produces one composite SSS recipient string → `age -e -r <recipient> -o "<name> - Encrypted <date><ext>.age" <source>`. Private keys are written as individual `Key for Digital Legacy - <name>.yaml` files into `internals/age-keys-DISTRIBUTE-AND-DELETE/`; the directory name is the instruction — those files are the only copies of the secrets and are meant to leave the machine.
+**Encrypt** — `age-keygen` once per share → public keys into `recipients.yaml`
+→ `age-plugin-sss --generate-recipient` → one composite recipient →
+`age -e -r <recipient>`. Written to a `.partial` name and renamed on success.
 
-Decrypt: parse `recipients.yaml` with regex for threshold and public keys → per key file, extract `AGE-SECRET-KEY-…` (matched as `^(AGE-SECRET-KEY-[A-Z0-9]+)$`, MULTILINE) → derive the public key via `age-keygen -y` on stdin → accept only if that public key appears in `recipients.yaml`'s `shares` → once `threshold` distinct keys are accepted, write an `identities:` yaml into the temp dir, run `age-plugin-sss --generate-identity` to get a combined identity, then `age -d -i <identity> -o <output> <file.age>`.
+**Verify** — a random threshold-sized subset of the fresh shares reconstructs an
+identity, decrypts to a scrubbed temp file, and its SHA-256 is compared to the
+source. **Encryption is not reported as successful until this passes.** Do not
+weaken this; it is the feature that makes the tool trustworthy.
 
-Note that the "wrong key" check is membership in `recipients.yaml`, not a cryptographic test against the ciphertext — it exists to give beneficiaries an immediate, readable error instead of a late `age` failure. Real failure is still caught by matching `"no identity matched any of the recipients"` in age's stderr, which also deletes the partial output file.
+**Decrypt** — each key file's secret is derived to a public key and checked for
+membership in `recipients.yaml` (a readable early error, not a cryptographic
+test) → `age-plugin-sss --generate-identity` → `age -d -i`. Real failure is still
+caught from age's stderr, which also shreds the empty output file age created.
 
-Decrypted output goes to the user's Desktop as `[SENSITIVE] <name> - Decrypted <date><ext>`, with a `(n)` counter to avoid overwriting.
+Output goes to the Desktop as `[SENSITIVE] <name> - Decrypted <date><ext>`,
+falling back to the home directory when there is no Desktop.
 
-### Error handling convention
+### Conventions to preserve
 
-Each script defines one exception type (`EncryptionError` / `DecryptionError`). Helper methods raise it with a message written for a lay reader; `run()` catches it, prints in red, and — in `decrypt.py`'s key-collection loop — offers a retry rather than exiting. Rejected key paths are recorded in `self.attempted_keys` so the same file can't be submitted twice. New failure modes should follow that pattern: raise the custom exception with an end-user-facing sentence, don't `sys.exit` or let a traceback escape.
+- **Errors**: raise a `DigitalLegacyError` subclass with a plain sentence and a
+  hint. Never `sys.exit`, never let a traceback reach the user.
+- **Secrets**: over stdin, never argv. Files created `O_EXCL` 0600, plus `icacls`
+  on Windows. Overwrite before unlinking.
+- **Progress**: use `console.task(...)` as a context manager so the outcome
+  reflects what happened. Never pass a hardcoded success.
+- **Step numbers**: `console.set_steps()` then `console.banner()`. Do not
+  hand-count.
 
-## Repo facts that contradict the README
+## Testing
 
-- The README's layout diagram and usage examples show `scripts/`, `sample-keys/`, and `encrypted/` at the repo root. They are all under `internals/`.
-- The README links `LICENSE.txt`; the project license file is `LICENSE`. `internals/binaries/LICENSE.txt` is the vendored `age-plugin-sss` license, not this project's.
-- `decrypt.py`'s file dialog opens in `internals/keys`, a directory that does not exist; the demo shares are in `internals/sample-keys/`.
+```bash
+python tests/run_tests.py
+```
+
+Two layers: `FakeToolchain` for logic (fast, runs anywhere) and real-binary
+integration tests that skip when `age` is absent. `tests/support.py` refuses to
+run against the working copy — an early version of the wizard tests let the CLI
+discover its own layout and overwrote the committed sample vault. Always pass
+`layout=` explicitly when calling `cli.main` from a test.
+
+`internals/encrypted/` ships a working sample (a PDF, 2 of 3, shares in
+`internals/sample-keys/`). The suite decrypts it on every run so it cannot
+silently rot. Keep that set consistent.
 
 ## Working in this repo
 
-There is no `.gitignore`. Running `encrypt.py` inside a clone leaves real private keys in `internals/age-keys-DISTRIBUTE-AND-DELETE/` and real ciphertext in `internals/encrypted/`, all of them untracked-but-uncovered and easy to commit by accident. The committed `internals/sample-keys/*.yaml` and the sample `.age` PDF are intentional demo material and match the committed `recipients.yaml`; leave that set consistent, since it is the only working end-to-end example.
+`.gitignore` covers generated private keys, real ciphertext, the handoff folder,
+and the binaries, while allowing the intentional sample vault through. Check it
+still holds before adding anything to `internals/encrypted/`.

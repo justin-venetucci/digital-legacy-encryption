@@ -57,7 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
             "several keyholders bring their keys together."
         ),
     )
-    parser.add_argument("--version", action="version", version=f"{PROGRAM} {__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"{PROGRAM} {__version__}"
+    )
     sub = parser.add_subparsers(dest="command")
 
     def add(name: str, **kwargs) -> argparse.ArgumentParser:
@@ -66,7 +68,9 @@ def build_parser() -> argparse.ArgumentParser:
     enc = add("encrypt", help="encrypt a document (wizard by default)")
     enc.add_argument("--file", type=Path, help="document to encrypt")
     enc.add_argument("--shares", type=int, help="how many keys to create")
-    enc.add_argument("--threshold", type=int, help="how many keys are needed to open it")
+    enc.add_argument(
+        "--threshold", type=int, help="how many keys are needed to open it"
+    )
     enc.add_argument(
         "--name",
         action="append",

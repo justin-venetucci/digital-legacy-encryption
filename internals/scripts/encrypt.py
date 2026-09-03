@@ -20,7 +20,7 @@ if str(INTERNALS) not in sys.path:
 
 
 def main() -> int:
-    if sys.version_info < (3, 9):
+    if sys.version_info < (3, 9):  # noqa: UP036 - deliberate floor check
         print(
             "This tool needs Python 3.9 or newer. "
             f"This computer has {sys.version.split()[0]}.\n"

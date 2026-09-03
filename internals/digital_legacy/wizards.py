@@ -18,9 +18,9 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from . import agekeys, handoff, operations
 from .agekeys import KeyPair
@@ -30,6 +30,7 @@ from .errors import (
     KeyFileError,
     OperationCancelled,
     PolicyError,
+    ToolchainError,
     VaultError,
 )
 from .layout import Layout
@@ -49,9 +50,11 @@ def open_in_default_app(path: Path) -> None:
     if os.name == "nt":
         os.startfile(str(path))  # type: ignore[attr-defined]  # noqa: S606
     elif sys.platform == "darwin":
-        subprocess.run(["open", str(path)], check=False)
+        # `open` and `xdg-open` come from PATH by design; they are the
+        # platform's own launchers and the user's session decides which.
+        subprocess.run(["open", str(path)], check=False)  # noqa: S607
     else:
-        subprocess.run(["xdg-open", str(path)], check=False)
+        subprocess.run(["xdg-open", str(path)], check=False)  # noqa: S607
 
 
 def show_ascii_art(console: Console, layout: Layout) -> None:
@@ -63,7 +66,8 @@ def show_ascii_art(console: Console, layout: Layout) -> None:
             return
         # The banner is 100 columns of ASCII art; on a narrow terminal it turns
         # into noise, so it is simply skipped rather than wrapped.
-        if max((len(line) for line in text.splitlines()), default=0) <= console.width + 24:
+        widest = max((len(line) for line in text.splitlines()), default=0)
+        if widest <= console.width + 24:
             console.write(text, "green")
 
 
@@ -93,10 +97,21 @@ class DecryptWizard:
         self.layout = layout
         self.console = console
         self.output_dir = output_dir or operations.default_output_dir()
-        self.toolchain: Toolchain | None = None
+        self._toolchain: Toolchain | None = None
         self.vault = Vault(layout.encrypted_dir)
         self.attempted: dict[str, bool] = {}
         self.collected: list[CollectedKey] = []
+
+    @property
+    def toolchain(self) -> Toolchain:
+        """The discovered binaries.
+
+        A property rather than an ``assert``: assertions are stripped under
+        ``python -O``, so they must not be load-bearing in shipped code.
+        """
+        if self._toolchain is None:  # pragma: no cover - programming error
+            raise ToolchainError("The helper programs have not been located yet.")
+        return self._toolchain
 
     # -- steps ------------------------------------------------------------
 
@@ -106,7 +121,7 @@ class DecryptWizard:
             console.clear()
             show_ascii_art(console, self.layout)
 
-            self.toolchain = Toolchain.discover(self.layout.binaries_dir)
+            self._toolchain = Toolchain.discover(self.layout.binaries_dir)
             policy = self.vault.load_policy()
             entry = self.select_entry()
 
@@ -224,11 +239,11 @@ class DecryptWizard:
     def accept_key(self, path: Path) -> CollectedKey:
         """Validate one key file, or explain precisely why it cannot be used."""
         console = self.console
-        assert self.toolchain is not None
         resolved = str(Path(path).resolve())
 
         if resolved in self.attempted:
-            verdict = "already accepted" if self.attempted[resolved] else "already tried"
+            accepted = self.attempted[resolved]
+            verdict = "already accepted" if accepted else "already tried"
             raise KeyFileError(
                 f"That file was {verdict}.",
                 hint="Each key must come from a different file. Choose one of "
@@ -271,7 +286,6 @@ class DecryptWizard:
 
     def decrypt(self, entry: VaultEntry) -> Path:
         console = self.console
-        assert self.toolchain is not None
         console.banner("Unlocking Your Information")
 
         problems = self.vault.check_integrity(entry)
@@ -322,8 +336,14 @@ class EncryptWizard:
     def __init__(self, layout: Layout, console: Console) -> None:
         self.layout = layout
         self.console = console
-        self.toolchain: Toolchain | None = None
+        self._toolchain: Toolchain | None = None
         self.vault = Vault(layout.encrypted_dir)
+
+    @property
+    def toolchain(self) -> Toolchain:
+        if self._toolchain is None:  # pragma: no cover - programming error
+            raise ToolchainError("The helper programs have not been located yet.")
+        return self._toolchain
 
     def run(self) -> int:
         console = self.console
@@ -332,7 +352,7 @@ class EncryptWizard:
             show_ascii_art(console, self.layout)
             console.set_steps(6)
 
-            self.toolchain = Toolchain.discover(self.layout.binaries_dir)
+            self._toolchain = Toolchain.discover(self.layout.binaries_dir)
             self.vault.ensure()
 
             self.welcome()
@@ -451,7 +471,6 @@ class EncryptWizard:
             labels.append(agekeys.sanitise_label(label))
 
         keypairs: list[KeyPair] = []
-        assert self.toolchain is not None
         for label in labels:
             with self.console.task(f"Creating the key for {label}", min_duration=0.15):
                 keypairs.append(agekeys.generate(self.toolchain, label=label))
@@ -478,7 +497,6 @@ class EncryptWizard:
         owner: str,
     ) -> operations.EncryptResult:
         console = self.console
-        assert self.toolchain is not None
         console.banner("Encrypting")
 
         steps: list[str] = []
@@ -627,4 +645,5 @@ class EncryptWizard:
             ]
         )
         console.blank()
-        console.note("Full checklist: " + str(self.layout.handoff_dir / "WHAT TO DO NEXT.txt"))
+        checklist = self.layout.handoff_dir / "WHAT TO DO NEXT.txt"
+        console.note(f"Full checklist: {checklist}")

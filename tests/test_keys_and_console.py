@@ -9,12 +9,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from support import PUBLIC_KEYS, SECRET_KEYS, FakeToolchain, strip_ansi
-
 from digital_legacy import agekeys
 from digital_legacy.console import Console
 from digital_legacy.errors import KeyFileError, OperationCancelled
 from digital_legacy.picker import clean_typed_path
+from support import PUBLIC_KEYS, SECRET_KEYS, FakeToolchain, strip_ansi
 
 
 class LabelTests(unittest.TestCase):
@@ -67,7 +66,9 @@ class KeyFileTests(unittest.TestCase):
     def test_round_trip_through_render_and_read(self):
         pair = agekeys.generate(self.toolchain, label="Alice")
         content = agekeys.render_key_file(pair, threshold=2, total_shares=3)
-        path = agekeys.write_key_file(self.tmp / agekeys.key_file_name("Alice"), content)
+        path = agekeys.write_key_file(
+            self.tmp / agekeys.key_file_name("Alice"), content
+        )
         parsed = agekeys.read_key_file(path)
         self.assertEqual(parsed.secret_key, pair.secret_key)
         self.assertEqual(parsed.declared_public_key, pair.public_key)
@@ -197,9 +198,8 @@ class ConsoleTests(unittest.TestCase):
     def test_task_reports_failed_when_the_block_raises(self):
         """The old helper took success=True from every call site and slept."""
         console = self.make()
-        with self.assertRaises(ValueError):
-            with console.task("Working", min_duration=0):
-                raise ValueError
+        with self.assertRaises(ValueError), console.task("Working", min_duration=0):
+            raise ValueError
         self.assertIn("Working... Failed", self.text())
 
     def test_ask_int_rejects_out_of_range_and_retries(self):
@@ -240,13 +240,16 @@ class ConsoleTests(unittest.TestCase):
 
 class TypedPathTests(unittest.TestCase):
     def test_explorer_copy_as_path_quotes_are_stripped(self):
-        self.assertEqual(clean_typed_path('"C:\\Users\\me\\key.yaml"'), "C:\\Users\\me\\key.yaml")
+        windows_path = r"C:\Users\me\key.yaml"
+        self.assertEqual(clean_typed_path(f'"{windows_path}"'), windows_path)
 
     def test_powershell_ampersand_prefix_is_stripped(self):
         self.assertEqual(clean_typed_path('& "C:\\a\\b.yaml"'), "C:\\a\\b.yaml")
 
     def test_shell_escaped_spaces_are_unescaped(self):
-        self.assertEqual(clean_typed_path("/home/me/my\\ key.yaml"), "/home/me/my key.yaml")
+        self.assertEqual(
+            clean_typed_path(r"/home/me/my\ key.yaml"), "/home/me/my key.yaml"
+        )
 
     def test_single_quotes_are_stripped(self):
         self.assertEqual(clean_typed_path("'/home/me/k.yaml'"), "/home/me/k.yaml")

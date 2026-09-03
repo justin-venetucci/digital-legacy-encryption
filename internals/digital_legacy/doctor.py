@@ -12,18 +12,18 @@ prints a verdict a non-expert can act on.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 from . import sss
-from .agekeys import read_key_file, derive_public_key, public_key_fingerprint
+from .agekeys import derive_public_key, public_key_fingerprint, read_key_file
 from .console import Console
 from .errors import DigitalLegacyError
 from .layout import Layout
 from .policy import Policy
 from .toolchain import Toolchain
-from .vault import Vault, sha256_file
+from .vault import Vault
 
 OK = "ok"
 WARN = "warn"
@@ -78,7 +78,9 @@ def run_checks(layout: Layout, *, deep: bool = False) -> Report:
             ", ".join(f"{name} {value}" for name, value in versions.items()),
         )
         if any(v in ("unavailable", "unknown") for v in versions.values()):
-            unknown = [n for n, v in versions.items() if v in ("unavailable", "unknown")]
+            unknown = [
+                n for n, v in versions.items() if v in ("unavailable", "unknown")
+            ]
             report.add(
                 "Version reporting",
                 WARN,
@@ -153,7 +155,9 @@ def run_checks(layout: Layout, *, deep: bool = False) -> Report:
     for entry in entries:
         problems = vault.check_integrity(entry)
         if problems:
-            report.add(f"Integrity of {entry.ciphertext_name}", FAIL, " ".join(problems))
+            report.add(
+                f"Integrity of {entry.ciphertext_name}", FAIL, " ".join(problems)
+            )
         elif entry.ciphertext_sha256:
             report.add(f"Integrity of {entry.ciphertext_name}", OK, "checksum matches")
         else:
@@ -169,7 +173,9 @@ def run_checks(layout: Layout, *, deep: bool = False) -> Report:
             try:
                 described = sss.inspect(toolchain, vault.entry_path(entry))
             except DigitalLegacyError as exc:
-                report.add(f"Policy sealed in {entry.ciphertext_name}", WARN, exc.message)
+                report.add(
+                    f"Policy sealed in {entry.ciphertext_name}", WARN, exc.message
+                )
                 continue
             sealed = _sealed_threshold(described)
             if sealed is None:
@@ -310,18 +316,22 @@ def render(report: Report, console: Console) -> None:
         mark, colour = marks[check.status]
         console.write(f"  [{mark}] {check.name}", colour)
         if check.detail:
+            tint = "grey" if check.status == OK else colour
             for line in _wrap(check.detail, console.width - 10):
-                console.write(f"         {line}", "grey" if check.status == OK else colour)
+                console.write(f"         {line}", tint)
 
     console.blank()
     if report.failures:
+        count = len(report.failures)
         console.error(
-            f"{len(report.failures)} problem(s) need attention before this "
-            "vault can be relied on."
+            f"{count} problem{'' if count == 1 else 's'} "
+            f"need{'s' if count == 1 else ''} attention before this vault can "
+            "be relied on."
         )
     elif report.warnings:
+        count = len(report.warnings)
         console.warn(
-            f"No faults. {len(report.warnings)} thing(s) worth a look."
+            f"No faults. {count} thing{'' if count == 1 else 's'} worth a look."
         )
     else:
         console.ok("Everything checks out.")

@@ -16,10 +16,11 @@ plaintext we started from.  Only then is the operation reported as successful.
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable
 
 from . import agekeys, sss
 from .agekeys import KeyPair
