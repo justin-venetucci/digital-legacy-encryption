@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from . import agekeys
 from .agekeys import KeyPair, key_file_name
 from .policy import Policy
 
@@ -337,4 +338,38 @@ def write_handoff_packet(
         readme.write_text(vault_readme(context), encoding="utf-8", newline="\n")
         written.append(readme)
 
+    return written
+
+
+def write_shares_and_letters(
+    keys_dir: Path,
+    handoff_dir: Path,
+    vault_dir: Path,
+    context: HandoffContext,
+) -> list[Path]:
+    """Write every key share, every letter, and the vault's READ ME FIRST.
+
+    One implementation for both the wizard and the command line: these are the
+    files an owner acts on afterwards, and the two paths drifting apart is how
+    a keyholder ends up with a key and no explanation of it.
+    """
+    written: list[Path] = []
+    for keypair in context.keypairs:
+        written.append(
+            agekeys.write_key_file(
+                Path(keys_dir) / key_file_name(keypair.label),
+                agekeys.render_key_file(
+                    keypair,
+                    threshold=context.threshold,
+                    total_shares=context.total,
+                    owner=context.owner,
+                    document=context.document,
+                ),
+            )
+        )
+    written.extend(write_handoff_packet(handoff_dir, context))
+
+    readme = Path(vault_dir) / "READ ME FIRST.txt"
+    readme.write_text(vault_readme(context), encoding="utf-8", newline="\n")
+    written.append(readme)
     return written

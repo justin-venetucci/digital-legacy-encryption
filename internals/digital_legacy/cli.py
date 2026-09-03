@@ -352,27 +352,17 @@ def _write_shares_and_letters(
     created: str,
 ) -> None:
     """Write the key files, the per-keyholder letters, and READ ME FIRST."""
-    for keypair in keypairs:
-        agekeys.write_key_file(
-            layout.keys_out_dir / agekeys.key_file_name(keypair.label),
-            agekeys.render_key_file(
-                keypair,
-                threshold=policy.threshold,
-                total_shares=policy.total_shares,
-                owner=owner,
-                document=document,
-            ),
-        )
-    context = handoff.HandoffContext(
-        owner=owner,
-        document=document,
-        policy=policy,
-        keypairs=keypairs,
-        created=created[:10],
-    )
-    handoff.write_handoff_packet(layout.handoff_dir, context)
-    (vault.path / "READ ME FIRST.txt").write_text(
-        handoff.vault_readme(context), encoding="utf-8", newline="\n"
+    handoff.write_shares_and_letters(
+        layout.keys_out_dir,
+        layout.handoff_dir,
+        vault.path,
+        handoff.HandoffContext(
+            owner=owner,
+            document=document,
+            policy=policy,
+            keypairs=keypairs,
+            created=created[:10],
+        ),
     )
 
 

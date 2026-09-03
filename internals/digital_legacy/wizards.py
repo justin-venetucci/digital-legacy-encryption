@@ -589,30 +589,10 @@ class EncryptWizard:
         )
 
         keys_dir = self.layout.keys_out_dir
-        for keypair in keypairs:
-            content = agekeys.render_key_file(
-                keypair,
-                threshold=result.policy.threshold,
-                total_shares=result.policy.total_shares,
-                owner=owner,
-                document=result.entry.display_name,
+        with console.task("Writing the key files and letters", min_duration=0.4):
+            handoff.write_shares_and_letters(
+                keys_dir, self.layout.handoff_dir, self.vault.path, context
             )
-            agekeys.write_key_file(
-                keys_dir / agekeys.key_file_name(keypair.label), content
-            )
-
-        with console.task("Writing the key files", min_duration=0.2):
-            pass
-
-        written = handoff.write_handoff_packet(self.layout.handoff_dir, context)
-        readme = [p for p in written if p.name == "READ ME FIRST.txt"]
-        if readme:
-            (self.vault.path / "READ ME FIRST.txt").write_text(
-                readme[0].read_text(encoding="utf-8"), encoding="utf-8", newline="\n"
-            )
-
-        with console.task("Writing the letters for each keyholder", min_duration=0.2):
-            pass
 
         console.blank()
         console.info("Key files:")
