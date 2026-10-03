@@ -86,6 +86,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="encrypt to the recipients.yaml already in the vault",
     )
     enc.add_argument(
+        "--key-prefix",
+        help="start of each key file name (default: 'Key for Digital Legacy - ')",
+    )
+    enc.add_argument(
+        "--shared-folder",
+        action="store_true",
+        default=None,
+        help="keys are kept in a shared cloud folder, each shared with its holder",
+    )
+    enc.add_argument(
+        "--key-notes",
+        type=Path,
+        metavar="FILE",
+        help="text file whose lines are added to every key file as comments",
+    )
+    enc.add_argument(
         "--allow-unverified",
         action="store_true",
         help="do not fail when recovery cannot be demonstrated",
@@ -131,6 +147,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="new keyholder name; repeat once per share",
     )
     res.add_argument("--owner", default="", help="your name, for the letters")
+    res.add_argument(
+        "--key-prefix",
+        help="start of each key file name (default: 'Key for Digital Legacy - ')",
+    )
+    res.add_argument(
+        "--shared-folder",
+        action="store_true",
+        default=None,
+        help="keys are kept in a shared cloud folder, each shared with its holder",
+    )
+    res.add_argument(
+        "--key-notes",
+        type=Path,
+        metavar="FILE",
+        help="text file whose lines are added to every key file as comments",
+    )
     res.add_argument(
         "--keep-old-file",
         action="store_true",
@@ -241,6 +273,7 @@ def cmd_encrypt(args, layout: Layout, console: Console) -> int:
             threshold=threshold, shares=[k.public_key for k in keypairs]
         ).validate()
 
+    profile = _handoff_profile(args, vault)
     result = operations.encrypt_and_verify(
         toolchain,
         args.file,
@@ -265,6 +298,7 @@ def cmd_encrypt(args, layout: Layout, console: Console) -> int:
                 for k in keypairs
             ],
             binaries=toolchain.fingerprints(),
+            handoff=_saved(profile),
             entries=[result.entry],
         )
     )
@@ -278,6 +312,7 @@ def cmd_encrypt(args, layout: Layout, console: Console) -> int:
             result.entry.display_name,
             args.owner,
             result.entry.encrypted_at or now_iso(),
+            profile,
         )
 
     console.ok(f"Encrypted to {result.path}")
@@ -350,6 +385,7 @@ def _write_shares_and_letters(
     document: str,
     owner: str,
     created: str,
+    profile: dict | None = None,
 ) -> None:
     """Write the key files, the per-keyholder letters, and READ ME FIRST."""
     handoff.write_shares_and_letters(
@@ -362,8 +398,47 @@ def _write_shares_and_letters(
             policy=policy,
             keypairs=keypairs,
             created=created[:10],
+            **(profile or {}),
         ),
     )
+
+
+def _handoff_profile(args, vault: Vault) -> dict:
+    """How keys are handed out: this run's flags over what the vault recorded.
+
+    Inheriting from the existing ``vault.json`` is the point. An owner sets the
+    key naming and wording once; a later re-encryption that silently went back
+    to the defaults would hand their family files that no longer match the
+    instructions they were given.
+    """
+    try:
+        manifest = vault.load_manifest()
+    except DigitalLegacyError:
+        manifest = None
+    profile = handoff.stored_profile(manifest) or {
+        "key_prefix": "",
+        "shared_folder": False,
+        "key_notes": "",
+    }
+
+    if getattr(args, "key_prefix", None):
+        profile["key_prefix"] = args.key_prefix
+    if getattr(args, "shared_folder", None):
+        profile["shared_folder"] = True
+    notes_file = getattr(args, "key_notes", None)
+    if notes_file:
+        try:
+            profile["key_notes"] = Path(notes_file).read_text(encoding="utf-8-sig")
+        except OSError as exc:
+            raise DigitalLegacyError(
+                f"Could not read the key notes file: {notes_file}",
+                hint="Check the path given to --key-notes.",
+            ) from exc
+    return profile
+
+
+def _saved(profile: dict) -> dict:
+    return handoff.HandoffContext(**profile).profile()
 
 
 def _select_entry(vault: Vault, name: str | None):
@@ -389,6 +464,7 @@ def cmd_reseal(args, layout: Layout, console: Console) -> int:
     toolchain = Toolchain.discover(layout.binaries_dir)
     vault = Vault(layout.encrypted_dir)
     old_policy = vault.load_policy()
+    profile = _handoff_profile(args, vault)
     entry = _select_entry(vault, args.document)
     secrets = _collect_secrets(toolchain, old_policy, args.keys, console)
 
@@ -432,6 +508,7 @@ def cmd_reseal(args, layout: Layout, console: Console) -> int:
                 for k in keypairs
             ],
             binaries=toolchain.fingerprints(),
+            handoff=_saved(profile),
             entries=[result.encrypt.entry],
         )
     )
@@ -443,6 +520,7 @@ def cmd_reseal(args, layout: Layout, console: Console) -> int:
         result.encrypt.entry.display_name,
         args.owner,
         result.encrypt.entry.encrypted_at or now_iso(),
+        profile,
     )
 
     console.ok(f"Resealed as {result.encrypt.path.name}")
@@ -524,6 +602,7 @@ def cmd_handoff(args, layout: Layout, console: Console) -> int:
         policy=policy,
         keypairs=keypairs,
         created=(manifest.created_at[:10] if manifest else ""),
+        **handoff.stored_profile(manifest),
     )
     destination = args.output or layout.handoff_dir
     written = handoff.write_handoff_packet(destination, context)

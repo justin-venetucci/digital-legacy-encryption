@@ -14,6 +14,7 @@ from a shell in the repository root, or by a wrapper script from somewhere else.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,6 +25,30 @@ Useful for keeping a vault on a USB stick or an external drive while running
 the code from a checkout, and it is what the test suite uses so a test run can
 never touch the real vault.
 """
+
+
+def _compiled_program_dir() -> Path | None:
+    """The folder holding the standalone executable, when running as one.
+
+    The copy handed to beneficiaries is compiled so they need no Python. Inside
+    that build ``__file__`` points into the unpacked program folder rather than
+    at ``internals/digital_legacy``, so counting parents from it lands on the
+    wrong directory -- and the wizard then reports the binaries and the
+    encrypted document as missing.
+    """
+    # Nuitka supplies this name at compile time. It is not an entry in
+    # globals(), so it has to be referenced directly to be seen at all.
+    try:
+        compiled = __compiled__  # type: ignore[name-defined]  # noqa: F821
+    except NameError:
+        compiled = None
+    # sys.executable, not __compiled__.containing_dir: in a standalone build
+    # that attribute names the folder *above* the program folder. resolve()
+    # matters too -- Windows can hand back 8.3 short names ("INTERN~1"), and
+    # the caller checks the folder's name.
+    if compiled is not None or getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return None
 
 
 @dataclass(frozen=True)
@@ -43,6 +68,14 @@ class Layout:
         override = os.environ.get(ROOT_ENV_VAR)
         if override:
             return cls(root=Path(override).expanduser().resolve())
+
+        if start is None:
+            frozen = _compiled_program_dir()
+            # internals/program/decrypt.exe -> root is two levels up. The check
+            # on the folder name keeps a stray copy of the exe from inventing a
+            # project root out of wherever it happens to sit.
+            if frozen and frozen.parent.name == "internals":
+                return cls(root=frozen.parent.parent)
 
         here = Path(start or __file__).resolve()
         internals = here.parent.parent

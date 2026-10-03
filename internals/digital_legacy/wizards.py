@@ -346,6 +346,7 @@ class EncryptWizard:
         self.console = console
         self._toolchain: Toolchain | None = None
         self.vault = Vault(layout.encrypted_dir)
+        self.profile: dict = {}
 
     @property
     def toolchain(self) -> Toolchain:
@@ -546,6 +547,13 @@ class EncryptWizard:
                 "this run."
             )
 
+        # Read before the manifest is replaced: an owner who set up their own
+        # key naming keeps it across re-encryptions.
+        try:
+            self.profile = handoff.stored_profile(self.vault.load_manifest())
+        except DigitalLegacyError:
+            self.profile = {}
+
         policy.save(self.vault.path / "recipients.yaml")
         self.vault.save_manifest(
             Manifest(
@@ -560,6 +568,7 @@ class EncryptWizard:
                     for k in keypairs
                 ],
                 binaries=self.toolchain.fingerprints(),
+                handoff=handoff.HandoffContext(**self.profile).profile(),
                 entries=[result.entry],
             )
         )
@@ -586,6 +595,7 @@ class EncryptWizard:
             policy=result.policy,
             keypairs=list(keypairs),
             created=result.entry.encrypted_at[:10] or None,
+            **self.profile,
         )
 
         keys_dir = self.layout.keys_out_dir

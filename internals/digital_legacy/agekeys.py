@@ -41,10 +41,15 @@ _RESERVED_WINDOWS_NAMES = frozenset(
 )
 
 
-def key_file_name(label: str) -> str:
-    """Filename for a keyholder's share, with path separators neutralised."""
+def key_file_name(label: str, prefix: str = "") -> str:
+    """Filename for a keyholder's share, with path separators neutralised.
+
+    ``prefix`` lets an owner keep the naming their family already knows; it is
+    cleaned the same way as the label, since it also comes from user input.
+    """
     safe = sanitise_label(label)
-    return f"{KEY_FILE_PREFIX}{safe}{KEY_FILE_SUFFIX}"
+    lead = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "-", prefix or "") or KEY_FILE_PREFIX
+    return f"{lead}{safe}{KEY_FILE_SUFFIX}"
 
 
 def sanitise_label(label: str) -> str:
@@ -232,16 +237,48 @@ def render_key_file(
     total_shares: int,
     owner: str = "",
     document: str = "",
+    shared_folder: bool = False,
+    notes: str = "",
 ) -> str:
     """The text of a key-share file, written for whoever opens it.
 
     Machine-readable lines stay in the exact format ``age`` expects; every added
     line is a YAML/age comment, so this file remains usable with a bare ``age``
     install if this tool is ever lost.
+
+    ``shared_folder`` is for an owner who keeps each share in a cloud folder,
+    shared only with its holder. The default advice -- keep it apart from the
+    document, never send it -- would contradict the instructions that owner has
+    given their family, and two sets of instructions is worse than either.
+
+    ``notes`` are the owner's own lines, written as comments after the key.
     """
     holder = keypair.label or "Keyholder"
     subject = f" for {owner}" if owner else ""
     doc = f"\n#   Document:    {document}" if document else ""
+    if shared_folder:
+        advice = """\
+#   * Leave it where it was shared with you. There is nothing to do
+#     with it until it is needed.
+#   * Do not edit it, and only pass it to another keyholder who needs
+#     it to open the document.
+#   * You do not need to understand it. When the time comes, run the
+#     "Decrypt My Information" program and select this file."""
+    else:
+        advice = """\
+#   * Store it somewhere you will still find it in ten years:
+#     a password manager, a safe, or printed on paper.
+#   * Do not email it, and do not store it with the encrypted
+#     document -- shares and document should never travel together.
+#   * You do not need to understand it. When the time comes, run the
+#     "Decrypt My Information" program and select this file."""
+    trailer = ""
+    if notes.strip():
+        # Every line becomes a comment, including any that already was one, so
+        # nothing an owner writes here can be mistaken for key material.
+        trailer = "\n" + "\n".join(
+            f"# {line}".rstrip() for line in notes.strip().splitlines()
+        ) + "\n"
     return f"""\
 # =====================================================================
 #  KEY SHARE{subject.upper()} -- KEEP THIS FILE SAFE AND PRIVATE
@@ -256,12 +293,7 @@ def render_key_file(
 #   Created:     {keypair.created}{doc}
 #
 #  WHAT TO DO WITH IT
-#   * Store it somewhere you will still find it in ten years:
-#     a password manager, a safe, or printed on paper.
-#   * Do not email it, and do not store it with the encrypted
-#     document -- shares and document should never travel together.
-#   * You do not need to understand it. When the time comes, run the
-#     "Decrypt My Information" program and select this file.
+{advice}
 #
 #  DO NOT EDIT THE LINES BELOW. Changing one character makes the key
 #  unusable, and there is no way to repair it.
@@ -270,7 +302,7 @@ def render_key_file(
 # created: {keypair.created}
 # public key: {keypair.public_key}
 {keypair.secret_key}
-"""
+{trailer}"""
 
 
 def write_key_file(path: Path, content: str) -> Path:

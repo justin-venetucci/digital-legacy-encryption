@@ -135,7 +135,43 @@ deletes a key file itself: destroying a secret on a guess is not reversible.
 
 The plaintext never leaves a scrubbed temporary folder during any of this.
 
-### 5. Check it once a year
+### 5. Package it for people who have no Python
+
+The launchers need a Python interpreter. Most families do not have one, so build
+a self-contained copy to hand out instead:
+
+```bash
+python -m pip install nuitka          # once, on your own machine only
+python tools/build_release.py --root "C:\path\to\production-folder"
+```
+
+`--root` is a folder holding your real `internals/encrypted` and
+`internals/binaries` — keep it outside this checkout and point the tool at it
+with `DIGITAL_LEGACY_ROOT` when you encrypt. The script compiles the decryptor to
+`internals/program/decrypt.exe`, stages it with the vault and the binaries, refuses
+to continue if a private key or decrypted document is in the staged tree, runs the
+health check through the compiled program, and writes `<name>-<date>-UNZIP-ME.zip`.
+The Windows launcher runs the compiled program when it is there and falls back to
+Python when it is not.
+
+### 6. If you keep the keys in a shared cloud folder
+
+The default paperwork tells keyholders to keep their key apart from the document
+and never to send it. If you instead keep each key in a cloud folder, shared only
+with its holder, say so, and the key files and `READ ME FIRST.txt` are worded to
+match:
+
+```bash
+python internals/scripts/encrypt.py --file DOC --shares 3 --threshold 2 \
+       --name Alice --name Bob --name Carol --owner "Your Name" \
+       --shared-folder --key-prefix "SENSITIVE - Key for Family Legacy - " \
+       --key-notes search-keywords.txt
+```
+
+These settings are recorded in `vault.json`, so the wizard, `reseal` and `handoff`
+keep using them without being told again.
+
+### 7. Check it once a year
 
 ```bash
 python internals/scripts/encrypt.py --doctor
@@ -229,6 +265,7 @@ and the honest list of what this does not protect against.
 │   ├── scripts/           encrypt.py, decrypt.py entry points
 │   ├── encrypted/         the vault: ciphertext + recipients.yaml + vault.json
 │   └── sample-keys/       demo shares for the committed sample document
+├── tools/                 build_release.py: package a copy for beneficiaries
 ├── tests/                 run with: python tests/run_tests.py
 ├── SECURITY.md
 └── LICENSE
@@ -245,7 +282,7 @@ silently rot. Replace it when you encrypt something real.
 python tests/run_tests.py
 ```
 
-116 tests, standard library only. The ones needing the `age` binaries skip
+160 tests, standard library only. The ones needing the `age` binaries skip
 themselves when those are absent — so a green run on a fresh clone means
 "everything checkable passed", not "everything passed".
 

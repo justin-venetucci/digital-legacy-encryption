@@ -20,6 +20,13 @@ REM ---------------------------------------------------------------------
 
 cd /d "%~dp0"
 
+REM The copy given to beneficiaries carries a self-contained program, so
+REM nothing needs installing. Python below is only the fallback.
+if exist "internals\program\decrypt.exe" (
+    "internals\program\decrypt.exe" %*
+    goto :finished
+)
+
 set "PYTHON="
 
 REM A virtual environment beside the project wins if the owner made one.
@@ -54,6 +61,8 @@ if not defined PYTHON (
 )
 
 %PYTHON% "internals\scripts\decrypt.py" %*
+
+:finished
 set "EXITCODE=%ERRORLEVEL%"
 
 REM No `exit` here: the window stays open so any message can be read.

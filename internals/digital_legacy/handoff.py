@@ -70,6 +70,26 @@ class HandoffContext:
     policy: Policy | None = None
     keypairs: Sequence[KeyPair] = ()
     created: str = ""
+    # How this owner hands keys out. Recorded in vault.json (see `profile`) so
+    # that reprinting the paperwork years later says the same thing it said
+    # the first time.
+    key_prefix: str = ""
+    shared_folder: bool = False
+    key_notes: str = ""
+
+    def key_file_name(self, label: str) -> str:
+        return key_file_name(label, self.key_prefix)
+
+    def profile(self) -> dict[str, object]:
+        """The handoff settings worth remembering, or ``{}`` for the defaults."""
+        saved: dict[str, object] = {}
+        if self.key_prefix:
+            saved["key_prefix"] = self.key_prefix
+        if self.shared_folder:
+            saved["shared_folder"] = True
+        if self.key_notes.strip():
+            saved["key_notes"] = self.key_notes
+        return saved
 
     @property
     def threshold(self) -> int:
@@ -86,6 +106,23 @@ class HandoffContext:
     def roster(self) -> list[str]:
         """Keyholder names only -- never fingerprints of *other* people's keys."""
         return [k.label or "(unnamed)" for k in self.keypairs]
+
+
+def stored_profile(manifest: object | None) -> dict[str, object]:
+    """Handoff settings from an existing ``vault.json``, as context keywords.
+
+    Tolerant of anything unexpected in the file: the profile only shapes
+    wording and filenames, so a damaged one falls back to the defaults rather
+    than stopping an encryption.
+    """
+    raw = getattr(manifest, "handoff", None)
+    if not isinstance(raw, dict):
+        return {}
+    return {
+        "key_prefix": str(raw.get("key_prefix") or ""),
+        "shared_folder": bool(raw.get("shared_folder")),
+        "key_notes": str(raw.get("key_notes") or ""),
+    }
 
 
 def _when_the_time_comes(context: HandoffContext) -> str:
@@ -133,7 +170,7 @@ def keyholder_letter(context: HandoffContext, keypair: KeyPair) -> str:
   For:        {holder}
   From:       {context.owner_phrase}
   Set up on:  {when}
-  Key file:   {key_file_name(holder)}
+  Key file:   {context.key_file_name(holder)}
   Share ID:   {keypair.fingerprint()}
 
 {_rule('-')}
@@ -171,6 +208,24 @@ def keyholder_letter(context: HandoffContext, keypair: KeyPair) -> str:
     return body
 
 
+def _where_the_keys_are(context: HandoffContext) -> str:
+    """How a beneficiary gets hold of the key files, for READ ME FIRST."""
+    pattern = context.key_file_name("NAME").replace("NAME", "<name>")
+    if context.shared_folder:
+        return (
+            f"Each of them has a file named '{pattern}', kept in the same "
+            "shared folder this program came from. Each person can open only "
+            "their own. To use someone else's, ask them to share it with you "
+            "-- the folder offers a 'Request access' button beside it -- or to "
+            "download it and send it to you. If a guide with pictures was left "
+            "beside this program, follow it; it shows each step."
+        )
+    return (
+        f"Each of them was given a file named '{pattern}' and a letter "
+        "explaining it. You need them to bring, or send you, that file."
+    )
+
+
 def vault_readme(context: HandoffContext) -> str:
     """``READ ME FIRST.txt`` -- what to do, for whoever finds the encrypted folder."""
     doc = context.document or "a document"
@@ -196,7 +251,7 @@ def vault_readme(context: HandoffContext) -> str:
   The keyholders are:
 {roster_block}
 
-{_wrap("Each of them was given a file named 'Key for Digital Legacy - <name>.yaml' and a letter explaining it. You need them to bring, or send you, that file.", "  ")}
+{_wrap(_where_the_keys_are(context), "  ")}
 
 {_rule('-')}
   HOW TO OPEN THE DOCUMENT
@@ -257,13 +312,17 @@ def owner_summary(context: HandoffContext) -> str:
     ]
     for keypair in context.keypairs:
         holder = keypair.label or "(unnamed)"
-        lines.append(f"    [ ] {holder:<24} {key_file_name(holder)}")
+        lines.append(f"    [ ] {holder:<24} {context.key_file_name(holder)}")
         lines.append(f"        share {keypair.fingerprint()} + their letter")
     lines += [
         "",
         _wrap(
-            "Give each person their key file and the letter addressed to them. "
-            "In person, or through an encrypted messenger. Not by email.",
+            "Put each key file in your shared folder and share it with its "
+            "holder only. Replace an existing key file in place rather than "
+            "deleting it, so the sharing you already set up carries over."
+            if context.shared_folder
+            else "Give each person their key file and the letter addressed to "
+            "them. In person, or through an encrypted messenger. Not by email.",
             "  ",
         ),
         "",
@@ -357,13 +416,15 @@ def write_shares_and_letters(
     for keypair in context.keypairs:
         written.append(
             agekeys.write_key_file(
-                Path(keys_dir) / key_file_name(keypair.label),
+                Path(keys_dir) / context.key_file_name(keypair.label),
                 agekeys.render_key_file(
                     keypair,
                     threshold=context.threshold,
                     total_shares=context.total,
                     owner=context.owner,
                     document=context.document,
+                    shared_folder=context.shared_folder,
+                    notes=context.key_notes,
                 ),
             )
         )

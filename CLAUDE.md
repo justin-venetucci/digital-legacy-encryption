@@ -36,7 +36,12 @@ python internals/scripts/encrypt.py reseal --key K1 --key K2 \
 ```
 
 Root-level `.bat` / `.command` / `.sh` wrappers are the shipped entry points.
-They locate a Python themselves and no longer require a `.venv`.
+They locate a Python themselves and no longer require a `.venv`. The Windows one
+runs `internals\program\decrypt.exe` first when a release build put it there.
+
+```bash
+python tools/build_release.py --root PRODUCTION_ROOT   # package for beneficiaries
+```
 
 ## Architecture
 
@@ -96,6 +101,33 @@ Binaries are not committed — only `*.placeholder` files and the vendored
 `LICENSE.txt`. A fresh clone therefore fails discovery with a checklist, and the
 integration tests skip themselves. That is the expected state.
 
+### The release package
+
+`tools/build_release.py` compiles `internals/scripts/decrypt.py` with Nuitka
+(a build-time tool on the owner's machine, not a runtime dependency) and zips it
+with a production root's vault and binaries. Beneficiaries have no Python; this is
+what they are given.
+
+- **Root discovery when compiled** goes through `sys.executable`'s folder
+  (`internals/program/`), not `__file__`. `__compiled__` must be referenced by
+  name — it is not in `globals()` — and `__compiled__.containing_dir` is the
+  folder *above* the program folder, so neither shortcut works. The path is
+  `.resolve()`d because Windows can return 8.3 short names and the folder name is
+  checked.
+- The builder runs `doctor` *through the staged exe* from an unrelated working
+  directory. Keep that check: it is what catches a build that cannot find its vault.
+- It refuses to package whole private keys, `[SENSITIVE]` files, or the key and
+  handoff folders, and refuses to package this repository (the sample vault).
+
+### The handoff profile
+
+`vault.json` may carry `handoff: {key_prefix, shared_folder, key_notes}`. It
+changes key filenames, the advice inside each key file, and the key paragraph of
+`READ ME FIRST.txt`, for an owner who keeps shares in a cloud folder shared per
+person. Flags set it; afterwards the wizard, `reseal` and `handoff` inherit it
+from the manifest. Do not let a re-encryption fall back to the defaults silently —
+the family's instructions name those files.
+
 ### The vault
 
 `internals/encrypted/` holds the ciphertext, exactly one `*.yaml` policy file,
@@ -129,7 +161,9 @@ test) → `age-plugin-sss --generate-identity` → `age -d -i`. Real failure is 
 caught from age's stderr, which also shreds the empty output file age created.
 
 Output goes to the Desktop as `[SENSITIVE] <name> - Decrypted <date><ext>`,
-falling back to the home directory when there is no Desktop.
+falling back to the home directory when there is no Desktop. On Windows the
+Desktop is whatever the shell reports, then OneDrive's, then `~/Desktop`:
+OneDrive folder backup can leave an empty `~/Desktop` nobody looks at.
 
 **Reseal** — decrypt with the current keys into a scrubbed temp dir, re-encrypt
 under a new policy, verify, then delete the old ciphertext. Deleting it is not

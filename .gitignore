@@ -28,6 +28,9 @@ internals/binaries/*
 !internals/binaries/README.md
 !internals/binaries/checksums.txt
 
+# The compiled decrypt program, produced by tools/build_release.py.
+internals/program/
+
 # ---------------------------------------------------------------------------
 # Python / editor / OS noise
 # ---------------------------------------------------------------------------

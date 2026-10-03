@@ -15,6 +15,7 @@ plaintext we started from.  Only then is the operation reported as successful.
 
 from __future__ import annotations
 
+import os
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -391,9 +392,49 @@ def default_output_dir() -> Path:
     Desktop when there is one; the home directory otherwise, since a headless
     or Linux account often has no Desktop and the old code would have written
     into a path that did not exist.
+
+    On Windows the Desktop a person actually sees is frequently not
+    ``~/Desktop``: OneDrive's folder backup moves it under the OneDrive folder,
+    and can leave an empty ``~/Desktop`` behind. Writing there would "succeed"
+    into a folder the beneficiary never looks at.
     """
-    desktop = Path.home() / "Desktop"
-    return desktop if desktop.is_dir() else Path.home()
+    for candidate in _desktop_candidates(Path.home()):
+        if candidate.is_dir():
+            return candidate
+    return Path.home()
+
+
+def _desktop_candidates(home: Path) -> list[Path]:
+    """Places the Desktop may be, most authoritative first."""
+    candidates: list[Path] = []
+    if os.name == "nt":
+        shell = _windows_shell_desktop()
+        if shell:
+            candidates.append(shell)
+        candidates.append(home / "OneDrive" / "Desktop")
+        try:
+            candidates.extend(
+                sorted(p / "Desktop" for p in home.glob("OneDrive - *") if p.is_dir())
+            )
+        except OSError:  # pragma: no cover - defensive
+            pass
+    candidates.append(home / "Desktop")
+    return candidates
+
+
+def _windows_shell_desktop() -> Path | None:
+    """Where Windows itself says the Desktop is, or ``None`` if it will not say."""
+    try:  # pragma: no cover - platform specific
+        import winreg
+
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
+        ) as key:
+            value, _ = winreg.QueryValueEx(key, "Desktop")
+        return Path(os.path.expandvars(str(value)))
+    except (ImportError, OSError):
+        return None
 
 
 # --------------------------------------------------------------------------

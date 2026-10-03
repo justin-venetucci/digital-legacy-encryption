@@ -168,6 +168,9 @@ class Manifest:
     threshold: int = 0
     keyholders: list[dict[str, str]] = field(default_factory=list)
     binaries: dict[str, str] = field(default_factory=dict)
+    # How the owner hands keys out (filename prefix, shared-folder wording,
+    # notes). Empty means the defaults; see handoff.HandoffContext.profile.
+    handoff: dict[str, object] = field(default_factory=dict)
     entries: list[VaultEntry] = field(default_factory=list)
 
     def to_json(self) -> str:
