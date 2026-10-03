@@ -124,10 +124,43 @@ The cryptography is the reliable part. Estates fail on the human side.
 - Keep shares physically separate from the encrypted document. Storing both on
   the same USB stick reduces the whole scheme to "a file on a USB stick".
 
+## Keeping the shares in a cloud folder
+
+`--shared-folder` supports an owner who keeps every share in one cloud account,
+each file shared only with its holder, next to the encrypted document. That is a
+deliberate trade of separation for findability, and it changes the model:
+
+- **The cloud account holds all `M` shares and the ciphertext.** Whoever controls
+  that account — the owner, anyone who takes it over, and the provider — can read
+  the document alone. The threshold now protects against a keyholder acting
+  alone, not against compromise of the account.
+- **The sharing settings are the access control.** A share opened up to the wrong
+  person, or a folder shared as a whole instead of file by file, quietly lowers
+  the threshold. Check the sharing after every reseal.
+- **Old versions linger.** Replacing a share in place keeps the sharing, but the
+  provider's version history keeps the retired key. It opens nothing once the old
+  ciphertext is gone — so make sure the old ciphertext, and any old package
+  holding it, really is gone.
+
+Protect that account as you would the document itself: a strong unique password,
+two-factor authentication, and a recovery route your family can use.
+
+## The compiled program
+
+`tools/build_release.py` produces a standalone `decrypt.exe` so beneficiaries
+need no Python. It is unsigned, so Windows and browsers will warn before running
+or downloading it; the people who will use it should be told to expect that. The
+compiled program is the same code as `internals/digital_legacy`, which ships
+beside it and can be run with any Python instead. The builder refuses to package
+private keys or decrypted documents, but it packages whatever binaries are in the
+production folder without verifying them — see above.
+
 ## Long-term durability
 
-- Share files keep the exact format `age-keygen` emits, so `age -d -i <share>`
-  works with a stock `age` install and no plugin, if this tool is ever lost.
+- Share files keep the exact format `age-keygen` emits, and the vault is an
+  ordinary `age` file, so recovery needs only `age` and `age-plugin-sss`, not this
+  tool: list `N` of the secret keys in a small YAML file, run `age-plugin-sss
+  --generate-identity` on it, and pass the result to `age -d -i`.
 - `vault.json` is plain JSON; `recipients.yaml` is a handful of lines of YAML.
   Both are readable without any of this code.
 - The real dependency risk is `age-plugin-sss`, a smaller project than `age`. Its

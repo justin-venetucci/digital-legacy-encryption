@@ -9,6 +9,7 @@ real ``internals/binaries`` -- into a self-contained package:
 
     <name>-<date>-UNZIP-ME.zip
         Decrypt My Information-Windows.bat
+        internals/README.md, internals/LICENSE
         internals/program/      standalone decrypt.exe, no Python needed
         internals/binaries/     age, age-keygen, age-plugin-sss
         internals/encrypted/    the ciphertext, recipients.yaml, vault.json
@@ -123,9 +124,12 @@ def stage(production_root: Path, stage_dir: Path, program: Path | None) -> None:
     # and this launcher has one.
     text = (REPO / LAUNCHER).read_bytes().replace(b"\r\n", b"\n")
     (stage_dir / LAUNCHER).write_bytes(text.replace(b"\n", b"\r\n"))
+    # Reference material goes inside internals/. The top level holds exactly two
+    # things -- the launcher and a folder -- so "double-click the one that is
+    # not a folder" is the whole instruction.
     for name in ("README.md", "LICENSE"):
         if (REPO / name).is_file():
-            shutil.copy2(REPO / name, stage_dir / name)
+            shutil.copy2(REPO / name, target / name)
 
     shutil.copytree(vault, target / "encrypted")
 

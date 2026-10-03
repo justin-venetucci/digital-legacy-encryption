@@ -29,8 +29,9 @@ need to understand any of it.
 
 1. Open the folder and read **`internals/encrypted/READ ME FIRST.txt`** — it
    names the keyholders and says how many keys are needed.
-2. Collect that many key files from the people listed. Each is a small text file
-   named `Key for Digital Legacy - <name>.yaml`.
+2. Collect that many key files from the people listed. Each is a small text
+   file, usually named `Key for Digital Legacy - <name>.yaml`; `READ ME FIRST.txt`
+   gives the exact name and says where they are kept.
 3. Run the launcher for your computer:
 
    | Computer | Double-click |
@@ -41,6 +42,10 @@ need to understand any of it.
 
 4. Follow the prompts. It asks for each key file in turn, tells you if one is
    the wrong file or has been damaged, and writes the document to your Desktop.
+
+If you were given a zip ending in `UNZIP-ME`, it contains just the launcher and
+an `internals` folder, and needs nothing installed. Windows may warn that it does
+not recognise the program; that is expected, and you can choose to run it.
 
 If a key file turns out to be wrong, the program says so and lets you try
 another — you do not have to start over.
@@ -245,9 +250,10 @@ deletion. They are passed to `age-keygen` over stdin, never on the command line
 where the process table would expose them.
 
 **Durability.** Key share files keep the exact format `age-keygen` emits, with
-everything else as comments. That means `age -d -i "Key for Digital Legacy -
-Alice.yaml"` works directly, so a share stays usable with a bare `age` install
-even if this tool is lost. See [SECURITY.md](SECURITY.md) for the threat model
+everything else as comments, and the encrypted document is an ordinary `age`
+file. If this tool is ever lost, `age` and `age-plugin-sss` alone can still open
+it: list the secret keys in a YAML file, run `age-plugin-sss --generate-identity`,
+and pass the result to `age -d -i`. See [SECURITY.md](SECURITY.md) for the threat model
 and the honest list of what this does not protect against.
 
 ---

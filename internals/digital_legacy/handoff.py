@@ -261,11 +261,7 @@ def vault_readme(context: HandoffContext) -> str:
 
 {_item(2, f"Collect the key files. You need {_count(context.threshold, 'of them', 'of them')}, from any of the people listed above. Put them somewhere you can find them, such as the Desktop.")}
 
-{_item(3, "Run the program in the top folder:")}
-
-       Windows:  Decrypt My Information-Windows.bat
-       macOS:    Decrypt My Information-macOS.command
-       Linux:    Decrypt My Information-Linux.sh
+{_item(3, "Run the program in the top folder. Its name begins 'Decrypt My Information'. If there is more than one, each is named for the kind of computer it runs on: Windows, macOS or Linux.")}
 
 {_item(4, "Follow the prompts. It will ask you to choose each key file in turn, and will tell you if one is the wrong file or has been damaged. When it has enough, it writes the decrypted document to your Desktop.")}
 
@@ -273,7 +269,7 @@ def vault_readme(context: HandoffContext) -> str:
   IF SOMETHING GOES WRONG
 {_rule('-')}
 
-{_wrap("'This tool needs age.exe...' -- the three helper programs are missing from internals/binaries. See README.md in the top folder for where to get them.", "  ")}
+{_wrap("'This tool needs age.exe...' -- the three helper programs are missing from internals/binaries. README.md, in this package, says where to get them.", "  ")}
 
 {_wrap("'These keys cannot open this document' -- the keys are valid but belong to a different encrypted file. Check you have the right folder.", "  ")}
 
