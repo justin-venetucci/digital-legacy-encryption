@@ -381,16 +381,16 @@ def write_handoff_packet(
     for keypair in context.keypairs:
         holder = keypair.label or "Keyholder"
         path = directory / f"Letter for {holder}.txt"
-        path.write_text(keyholder_letter(context, keypair), encoding="utf-8", newline="\n")
+        path.write_bytes(keyholder_letter(context, keypair).encode("utf-8"))
         written.append(path)
 
     summary = directory / "WHAT TO DO NEXT.txt"
-    summary.write_text(owner_summary(context), encoding="utf-8", newline="\n")
+    summary.write_bytes(owner_summary(context).encode("utf-8"))
     written.append(summary)
 
     if include_readme:
         readme = directory / "READ ME FIRST.txt"
-        readme.write_text(vault_readme(context), encoding="utf-8", newline="\n")
+        readme.write_bytes(vault_readme(context).encode("utf-8"))
         written.append(readme)
 
     return written
@@ -427,6 +427,6 @@ def write_shares_and_letters(
     written.extend(write_handoff_packet(handoff_dir, context))
 
     readme = Path(vault_dir) / "READ ME FIRST.txt"
-    readme.write_text(vault_readme(context), encoding="utf-8", newline="\n")
+    readme.write_bytes(vault_readme(context).encode("utf-8"))
     written.append(readme)
     return written

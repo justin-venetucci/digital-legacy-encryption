@@ -278,9 +278,7 @@ class Vault:
         self.ensure()
         manifest.updated_at = now_iso()
         manifest.tool_version = __version__
-        self.manifest_path.write_text(
-            manifest.to_json(), encoding="utf-8", newline="\n"
-        )
+        self.manifest_path.write_bytes(manifest.to_json().encode("utf-8"))
         return self.manifest_path
 
     # -- entries ----------------------------------------------------------

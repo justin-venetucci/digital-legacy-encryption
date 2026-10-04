@@ -606,9 +606,8 @@ def cmd_handoff(args, layout: Layout, console: Console) -> int:
     )
     destination = args.output or layout.handoff_dir
     written = handoff.write_handoff_packet(destination, context)
-    (vault.path / "READ ME FIRST.txt").write_text(
-        handoff.vault_readme(context), encoding="utf-8", newline="\n"
-    )
+    readme = handoff.vault_readme(context)
+    (vault.path / "READ ME FIRST.txt").write_bytes(readme.encode("utf-8"))
     console.ok(f"Wrote {len(written)} file(s) to {destination}")
     return 0
 

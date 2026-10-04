@@ -56,7 +56,7 @@ def generate_recipient(toolchain: Toolchain, policy: Policy) -> str:
     policy.validate()
     with secure_tempdir("digital_legacy_policy_") as workdir:
         policy_path = workdir / "policy.yaml"
-        policy_path.write_text(policy.render(), encoding="utf-8", newline="\n")
+        policy_path.write_bytes(policy.render().encode("utf-8"))
         try:
             result = toolchain.run(
                 toolchain.age_plugin_sss, "--generate-recipient", str(policy_path)
@@ -93,7 +93,7 @@ def write_identity(
     destination = Path(destination)
     identities_path = destination.parent / "identities.yaml"
     body = "identities:\n" + "".join(f"  - {key}\n" for key in secret_keys)
-    identities_path.write_text(body, encoding="utf-8", newline="\n")
+    identities_path.write_bytes(body.encode("utf-8"))
     harden(identities_path)
 
     try:
@@ -116,7 +116,7 @@ def write_identity(
             hint="Check that every key file belongs to this document.",
         )
 
-    destination.write_text(result.stdout, encoding="utf-8", newline="\n")
+    destination.write_bytes(result.stdout.encode("utf-8"))
     harden(destination)
     return destination
 

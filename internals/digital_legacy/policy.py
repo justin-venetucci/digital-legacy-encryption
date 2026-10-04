@@ -273,5 +273,5 @@ class Policy:
     def save(self, path: Path) -> Path:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.render(), encoding="utf-8", newline="\n")
+        path.write_bytes(self.render().encode("utf-8"))
         return path
