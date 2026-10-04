@@ -51,6 +51,8 @@ can be opened again.
   a key outside the keys folder, or fail after the key was generated.
 - Key material is redacted from anything the binaries print before it reaches
   the screen.
+- Saving any file failed on Python 3.9, the oldest supported version, because of
+  an argument `Path.write_text` only gained in 3.10. Found by the first CI run.
 - On Windows with OneDrive folder backup, output went to an empty `~/Desktop`
   nobody looks at.
 
