@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AGE_VERSION: v1.2.0
+  SSS_VERSION: v0.4.0
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: python -m pip install ruff==0.16.10
+      - run: python -m ruff check .
+
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.9", "3.11", "3.13", "3.14"]
+        include:
+          - os: macos-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.13"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      # The binaries are not committed, and without them the integration tests
+      # skip themselves. Fetch pinned upstream releases, checked against
+      # digests recorded here, so the suite exercises real cryptography.
+      - name: Fetch age and age-plugin-sss (Linux, macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64)
+              platform=linux-amd64
+              age_sha=2ae71cb3ea761118937a944083f057cfd42f0ef11d197ce72fc2b8780d50c4ef
+              sss_sha=5a792682c29fe4f46a3619a3e3ffa86b7704a49da8248b205e8f34f495e10e4f ;;
+            macOS-ARM64)
+              platform=darwin-arm64
+              age_sha=f9dbc0726394f509e3d515a0bef5ffc02d8e59a818bfffc0f4acd826405af292
+              sss_sha=df80dda2525f14f7c3e17c9bb0ce2ed9d1cb01cab2ce1860fdc912fbc510acf7 ;;
+            *) echo "No pinned binaries for $RUNNER_OS-$RUNNER_ARCH"; exit 1 ;;
+          esac
+          age_file="age-$AGE_VERSION-$platform.tar.gz"
+          sss_file="age-plugin-sss-$SSS_VERSION-$platform.tar.gz"
+          curl -fsSLO "https://github.com/FiloSottile/age/releases/download/$AGE_VERSION/$age_file"
+          curl -fsSLO "https://github.com/olastor/age-plugin-sss/releases/download/$SSS_VERSION/$sss_file"
+          printf '%s  %s\n%s  %s\n' "$age_sha" "$age_file" "$sss_sha" "$sss_file" > sums.txt
+          shasum -a 256 -c sums.txt
+          tar xzf "$age_file"
+          tar xzf "$sss_file"
+          cp age/age age/age-keygen age-plugin-sss/age-plugin-sss internals/binaries/
+          chmod +x internals/binaries/age internals/binaries/age-keygen internals/binaries/age-plugin-sss
+
+      # The plugin publishes no Windows build, so it is compiled from the same
+      # tag; the Go checksum database verifies the module.
+      - name: Fetch age and build age-plugin-sss (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          age_file="age-$AGE_VERSION-windows-amd64.zip"
+          curl -fsSLO "https://github.com/FiloSottile/age/releases/download/$AGE_VERSION/$age_file"
+          echo "dc3304c33f3564fb5b8a90ba67f0dea38f99215fea38aa132ce30c7a22c0702f  $age_file" > sums.txt
+          sha256sum -c sums.txt
+          unzip -q "$age_file"
+          cp age/age.exe age/age-keygen.exe internals/binaries/
+          GOBIN="$PWD/internals/binaries" go install "github.com/olastor/age-plugin-sss/cmd/age-plugin-sss@$SSS_VERSION"
+
+      - name: Health check
+        run: python internals/scripts/encrypt.py --doctor --no-colour
+
+      - name: Tests
+        run: python tests/run_tests.py
