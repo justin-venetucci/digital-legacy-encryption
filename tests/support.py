@@ -17,6 +17,7 @@ installed, which is the same constraint the shipped code lives under.
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 import unittest
 from pathlib import Path
@@ -176,7 +177,9 @@ def make_layout(root: Path) -> Layout:
         target.mkdir()
         for item in binaries.iterdir():
             if item.is_file() and not item.name.endswith(".placeholder"):
-                target.joinpath(item.name).write_bytes(item.read_bytes())
+                # copy2 keeps the execute bit, which write_bytes drops;
+                # without it nothing runs anywhere but Windows.
+                shutil.copy2(item, target / item.name)
     layout = Layout(root=root)
     guard_not_the_real_repo(layout)
     return layout
