@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 716 894" width="716" height="894" role="img" aria-label="The decryption wizard rejects a file that is not a key, explains why in plain words, offers another try, and then unlocks the document.">
+<title>The decryption wizard rejects a file that is not a key, explains why in plain words, offers another try, and then unlocks the document.</title>
+<rect width="716" height="894" rx="8" fill="#0d1117"/>
+<path d="M0 8a8 8 0 0 1 8-8h700a8 8 0 0 1 8 8v20H0z" fill="#161b22"/>
+<circle cx="18" cy="14" r="5.5" fill="#ff5f57"/><circle cx="36" cy="14" r="5.5" fill="#febc2e"/><circle cx="54" cy="14" r="5.5" fill="#28c840"/>
+<text x="358.0" y="18.5" text-anchor="middle" fill="#8b949e" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12">Decrypt My Information</text>
+<g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace" font-size="14" xml:space="preserve">
+<text x="18" y="54" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="73" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                           [Step 2 of 5] Key 1 of 2                           ║</tspan></text>
+<text x="18" y="92" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="130" textLength="529.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">Press Enter to open the file chooser, or type a file path here.</tspan></text>
+<text x="18" y="149" textLength="504.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">Path (or Enter for the chooser): </tspan><tspan fill="#c9d1d9">C:\Legacy\holiday-photo.jpg</tspan></text>
+<text x="18" y="168" textLength="327.6" lengthAdjust="spacingAndGlyphs"><tspan fill="#ff7b72">  x Reading holiday-photo.jpg... Failed</tspan></text>
+<text x="18" y="206" textLength="621.6" lengthAdjust="spacingAndGlyphs"><tspan fill="#ff7b72">Problem: holiday-photo.jpg is not a text file, so it cannot be a key file.</tspan></text>
+<text x="18" y="225" textLength="571.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#d29922">         Key files are named &#x27;Key for Digital Legacy - &lt;name&gt;.yaml&#x27;.</tspan></text>
+<text x="18" y="263" textLength="252.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">Try a different file? (Y/n): </tspan><tspan fill="#c9d1d9">y</tspan></text>
+<text x="18" y="301" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="320" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                           [Step 2 of 5] Key 1 of 2                           ║</tspan></text>
+<text x="18" y="339" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="377" textLength="529.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">Press Enter to open the file chooser, or type a file path here.</tspan></text>
+<text x="18" y="396" textLength="596.4" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">Path (or Enter for the chooser): </tspan><tspan fill="#c9d1d9">E:\Key for Digital Legacy - Alice.yaml</tspan></text>
+<text x="18" y="415" textLength="462.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Reading Key for Digital Legacy - Alice.yaml... Done</tspan></text>
+<text x="18" y="434" textLength="235.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Checking the key... Done</tspan></text>
+<text x="18" y="472" textLength="210.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">Key accepted, from Alice.</tspan></text>
+<text x="18" y="491" textLength="168.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">You need 1 more key.</tspan></text>
+<text x="18" y="529" textLength="42.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#c9d1d9">  ...</tspan></text>
+<text x="18" y="567" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="586" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                   [Step 4 of 5] Unlocking Your Information                   ║</tspan></text>
+<text x="18" y="605" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="643" textLength="285.6" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Unlocking the document... Done</tspan></text>
+<text x="18" y="681" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="700" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                            [Step 5 of 5] Finished                            ║</tspan></text>
+<text x="18" y="719" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="757" textLength="294.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">Your information has been unlocked.</tspan></text>
+<text x="18" y="795" textLength="176.4" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">It has been saved to:</tspan></text>
+<text x="18" y="814" textLength="680.4" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc" font-weight="bold">  C:\Legacy\Desktop\[SENSITIVE] Accounts and passwords - Decrypted 2026-10-04.pdf</tspan></text>
+<text x="18" y="852" textLength="520.8" lengthAdjust="spacingAndGlyphs"><tspan fill="#e3b341">This file is now readable by anyone who can use this computer.</tspan></text>
+<text x="18" y="871" textLength="310.8" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">Delete it when you no longer need it.</tspan></text>
+</g></svg>

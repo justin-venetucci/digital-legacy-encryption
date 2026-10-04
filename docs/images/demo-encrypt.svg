@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 708 837" width="708" height="837" role="img" aria-label="The encryption wizard creates three keys, encrypts the document, then decrypts it again with a random pair of keys before reporting success.">
+<title>The encryption wizard creates three keys, encrypts the document, then decrypts it again with a random pair of keys before reporting success.</title>
+<rect width="708" height="837" rx="8" fill="#0d1117"/>
+<path d="M0 8a8 8 0 0 1 8-8h692a8 8 0 0 1 8 8v20H0z" fill="#161b22"/>
+<circle cx="18" cy="14" r="5.5" fill="#ff5f57"/><circle cx="36" cy="14" r="5.5" fill="#febc2e"/><circle cx="54" cy="14" r="5.5" fill="#28c840"/>
+<text x="354.0" y="18.5" text-anchor="middle" fill="#8b949e" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12">Encrypt My Information</text>
+<g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,Liberation Mono,monospace" font-size="14" xml:space="preserve">
+<text x="18" y="54" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="73" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                        [Step 3 of 6] Set Up the Keys                         ║</tspan></text>
+<text x="18" y="92" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="130" textLength="428.4" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">Your name, for the letters given to keyholders: </tspan><tspan fill="#c9d1d9">Sam</tspan></text>
+<text x="18" y="168" textLength="520.8" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">How many keys should exist? (2-20, 3 is a good default) [3]: </tspan><tspan fill="#c9d1d9">3</tspan></text>
+<text x="18" y="187" textLength="529.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">How many of those 3 must be brought together to open it? [2]: </tspan><tspan fill="#c9d1d9">2</tspan></text>
+<text x="18" y="225" textLength="453.6" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">Who will hold each key? Names appear on their letters.</tspan></text>
+<text x="18" y="244" textLength="252.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">  Name for key 1 [Key1]: </tspan><tspan fill="#c9d1d9">Alice</tspan></text>
+<text x="18" y="263" textLength="235.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">  Name for key 2 [Key2]: </tspan><tspan fill="#c9d1d9">Bob</tspan></text>
+<text x="18" y="282" textLength="252.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#d2a8ff">  Name for key 3 [Key3]: </tspan><tspan fill="#c9d1d9">Carol</tspan></text>
+<text x="18" y="301" textLength="319.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Creating the key for Alice... Done</tspan></text>
+<text x="18" y="320" textLength="302.4" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Creating the key for Bob... Done</tspan></text>
+<text x="18" y="339" textLength="319.2" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Creating the key for Carol... Done</tspan></text>
+<text x="18" y="377" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="396" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                           [Step 4 of 6] Encrypting                           ║</tspan></text>
+<text x="18" y="415" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="453" textLength="411.6" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Encrypting Accounts and passwords.pdf... Done</tspan></text>
+<text x="18" y="472" textLength="394.8" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Testing that it can be opened again... Done</tspan></text>
+<text x="18" y="491" textLength="436.8" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  Recovered the original document using: Carol, Bob.</tspan></text>
+<text x="18" y="529" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="548" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                        [Step 5 of 6] Keys and Letters                        ║</tspan></text>
+<text x="18" y="567" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="605" textLength="378.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">  ✓ Writing the key files and letters... Done</tspan></text>
+<text x="18" y="643" textLength="84.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">Key files:</tspan></text>
+<text x="18" y="662" textLength="436.8" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc" font-weight="bold">  C:\Legacy\internals\age-keys-DISTRIBUTE-AND-DELETE</tspan></text>
+<text x="18" y="681" textLength="226.8" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc">Letters and your checklist:</tspan></text>
+<text x="18" y="700" textLength="243.6" lengthAdjust="spacingAndGlyphs"><tspan fill="#f0f6fc" font-weight="bold">  C:\Legacy\internals\handoff</tspan></text>
+<text x="18" y="738" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╔══════════════════════════════════════════════════════════════════════════════╗</tspan></text>
+<text x="18" y="757" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">║                              [Step 6 of 6] Done                              ║</tspan></text>
+<text x="18" y="776" textLength="672.0" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d4dd">╚══════════════════════════════════════════════════════════════════════════════╝</tspan></text>
+<text x="18" y="814" textLength="302.4" lengthAdjust="spacingAndGlyphs"><tspan fill="#56d364">Encrypted, and proven to open again.</tspan></text>
+</g></svg>

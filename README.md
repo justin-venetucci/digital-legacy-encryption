@@ -1,24 +1,87 @@
-# Digital Legacy Encryption Suite
+# Digital Legacy Encryption
 
-Encrypt a document — a password list, account inventory, letter, or anything
-else — so that it can only be opened again when **several people bring their
-keys together**. No single person can read it alone, and no single person losing
-their key can lock everyone else out.
+[![CI](https://github.com/justin-venetucci/digital-legacy-encryption/actions/workflows/ci.yml/badge.svg)](https://github.com/justin-venetucci/digital-legacy-encryption/actions/workflows/ci.yml)
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776ab)
+![Dependencies: none](https://img.shields.io/badge/dependencies-none-2ea44f)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-Built on [`age`](https://age-encryption.org) and
+Encrypt a document — a password list, an account inventory, a letter — so that
+it can only be opened when **several people bring their keys together**. No
+single person can read it alone, and no single person losing their key can lock
+everyone else out.
+
+It is built for the moment it will actually be used: by someone non-technical,
+probably grieving, doing this once, with nobody to ask.
+
+```mermaid
+flowchart LR
+    doc([Your document]) --> enc[encrypt]
+    enc --> age[(one .age file<br/>safe to store openly)]
+    enc --> k1[/Key: Alice/]
+    enc --> k2[/Key: Bob/]
+    enc --> k3[/Key: Carol/]
+    k1 & k3 -->|any 2 of 3| dec[decrypt]
+    age --> dec
+    dec --> out([Your document])
+```
+
+The cryptography is [`age`](https://age-encryption.org) with
 [`age-plugin-sss`](https://github.com/olastor/age-plugin-sss) (Shamir Secret
-Sharing). The Python around them is standard-library only, so a beneficiary in
-twenty years needs nothing but a Python interpreter and three small binaries.
+Sharing). This project is everything around it: the part that decides whether a
+family can really get the document back.
 
+## What makes it worth a look
+
+- **It proves recovery before it claims success.** After encrypting, the tool
+  decrypts its own output with a random threshold-sized subset of the new keys
+  and compares SHA-256 against the original. It will not say "done" until the
+  document has demonstrably come back.
+- **Errors are written for the person reading them.** Every failure carries a
+  plain sentence and a next step, every rejected key file offers another try,
+  and no traceback ever reaches the screen.
+- **Zero runtime dependencies.** Standard library only, down to a small strict
+  parser for the YAML subset the plugin needs. In twenty years a beneficiary
+  needs a Python interpreter and three small binaries, not a dependency graph.
+- **It survives its own disappearance.** Key files keep the exact format
+  `age-keygen` emits and the ciphertext is an ordinary `age` file, so stock
+  `age` and the plugin can open it without any of this code.
+- **It is honest about its limits.** [SECURITY.md](SECURITY.md) spells out the
+  threat model, including what this does *not* protect against.
+- **It is tested like it matters.** 161 tests on standard-library `unittest`,
+  run in CI on Linux, macOS and Windows against real `age` binaries, including
+  one that decrypts the sample vault in this repository on every run.
+
+<p align="center">
+  <img src="docs/images/demo-encrypt.svg" width="700"
+       alt="The encryption wizard creates three keys, encrypts the document, then decrypts it again with a random pair of keys before reporting success.">
+</p>
+
+And the other end, years later, with a mistake a real person would make:
+
+<p align="center">
+  <img src="docs/images/demo-decrypt.svg" width="700"
+       alt="The decryption wizard rejects a file that is not a key, explains why in plain words, offers another try, and then unlocks the document.">
+</p>
+
+Both images are unedited output from the wizards, apart from shortened paths.
+
+## Try it in two minutes
+
+The repository ships a working sample: a PDF encrypted 2 of 3, with its three
+demo keys in `internals/sample-keys/`.
+
+1. Put `age`, `age-keygen` and `age-plugin-sss` in `internals/binaries/`
+   ([where to get them](#1-get-the-three-binaries)).
+2. Check the installation, then open the sample with any two keys:
+
+```bash
+python internals/scripts/encrypt.py --doctor
+python internals/scripts/decrypt.py --output . \
+       --key "internals/sample-keys/Key for Digital Legacy - Key1.yaml" \
+       --key "internals/sample-keys/Key for Digital Legacy - Key2.yaml"
 ```
-                     ┌──────────────┐
-   Your document ───▶│  encrypt.py  │───▶  one .age file  (safe to store openly)
-                     └──────┬───────┘
-                            │
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-          Key: Alice    Key: Bob     Key: Carol      any 2 of the 3 → document
-```
+
+Run either script with no arguments for the guided wizard.
 
 ---
 
@@ -67,7 +130,9 @@ platform-specific, and 8–20 MB each. Download them and put them in
 
 On Windows they need the `.exe` extension (`age.exe`, `age-keygen.exe`,
 `age-plugin-sss.exe`); on macOS and Linux, no extension plus
-`chmod +x internals/binaries/*`.
+`chmod +x internals/binaries/*`. The plugin publishes no Windows build; with Go
+installed, `go install github.com/olastor/age-plugin-sss/cmd/age-plugin-sss@latest`
+produces one.
 
 Package managers work too — `choco install age` on Windows, `brew install age`
 on macOS — but note that Chocolatey installs a *shim*, not the real executable;
@@ -78,6 +143,11 @@ Check it worked:
 ```bash
 python internals/scripts/encrypt.py --doctor
 ```
+
+<p align="center">
+  <img src="docs/images/demo-doctor.svg" width="700"
+       alt="The health check verifies the binaries, key list, checksums and the policy sealed in the ciphertext, and warns that key files are still on this machine.">
+</p>
 
 ### 2. Encrypt something
 
@@ -140,7 +210,20 @@ deletes a key file itself: destroying a secret on a guess is not reversible.
 
 The plaintext never leaves a scrubbed temporary folder during any of this.
 
-### 5. Package it for people who have no Python
+### 5. Check it once a year
+
+```bash
+python internals/scripts/encrypt.py --doctor
+```
+
+Verifies the binaries still run, the key list is still valid and consistent with
+the ciphertext, checksums still match, and no private keys have been left lying
+around. Takes a second and catches the kind of rot — antivirus quarantine, a
+mangled cloud sync, a tidied folder — that otherwise surfaces at the worst
+possible moment.
+
+<details>
+<summary><b>Packaging it for people who have no Python</b></summary>
 
 The launchers need a Python interpreter. Most families do not have one, so build
 a self-contained copy to hand out instead:
@@ -159,7 +242,13 @@ health check through the compiled program, and writes `<name>-<date>-UNZIP-ME.zi
 The Windows launcher runs the compiled program when it is there and falls back to
 Python when it is not.
 
-### 6. If you keep the keys in a shared cloud folder
+A production folder may carry its own `internals/scripts/resources/ascii.txt`;
+the package then opens with that banner instead of the default.
+
+</details>
+
+<details>
+<summary><b>If you keep the keys in a shared cloud folder</b></summary>
 
 The default paperwork tells keyholders to keep their key apart from the document
 and never to send it. If you instead keep each key in a cloud folder, shared only
@@ -174,19 +263,10 @@ python internals/scripts/encrypt.py --file DOC --shares 3 --threshold 2 \
 ```
 
 These settings are recorded in `vault.json`, so the wizard, `reseal` and `handoff`
-keep using them without being told again.
+keep using them without being told again. [SECURITY.md](SECURITY.md) states what
+this model costs.
 
-### 7. Check it once a year
-
-```bash
-python internals/scripts/encrypt.py --doctor
-```
-
-Verifies the binaries still run, the key list is still valid and consistent with
-the ciphertext, checksums still match, and no private keys have been left lying
-around. Takes a second and catches the kind of rot — antivirus quarantine, a
-mangled cloud sync, a tidied folder — that otherwise surfaces at the worst
-possible moment.
+</details>
 
 ---
 
@@ -253,8 +333,12 @@ where the process table would expose them.
 everything else as comments, and the encrypted document is an ordinary `age`
 file. If this tool is ever lost, `age` and `age-plugin-sss` alone can still open
 it: list the secret keys in a YAML file, run `age-plugin-sss --generate-identity`,
-and pass the result to `age -d -i`. See [SECURITY.md](SECURITY.md) for the threat model
-and the honest list of what this does not protect against.
+and pass the result to `age -d -i`.
+
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers the module layout and the
+design decisions behind it; [SECURITY.md](SECURITY.md) is the threat model and
+the honest list of what this does not protect against;
+[CHANGELOG.md](CHANGELOG.md) is the history.
 
 ---
 
@@ -273,6 +357,7 @@ and the honest list of what this does not protect against.
 │   └── sample-keys/       demo shares for the committed sample document
 ├── tools/                 build_release.py: package a copy for beneficiaries
 ├── tests/                 run with: python tests/run_tests.py
+├── docs/                  architecture notes and the images above
 ├── SECURITY.md
 └── LICENSE
 ```
@@ -288,17 +373,18 @@ silently rot. Replace it when you encrypt something real.
 python tests/run_tests.py
 ```
 
-160 tests, standard library only. The ones needing the `age` binaries skip
+161 tests, standard library only. The ones needing the `age` binaries skip
 themselves when those are absent — so a green run on a fresh clone means
-"everything checkable passed", not "everything passed".
+"everything checkable passed", not "everything passed". CI fetches pinned,
+checksum-verified binaries so nothing is skipped there.
 
 ## Requirements
 
 Python 3.9 or newer, a working Tk for the file chooser (optional — the tool
 falls back to typing a path), and the three binaries above.
 
-The 3.9 floor is enforced by the linter's target version and a scan for newer
-syntax; the suite is actually executed on 3.12 and 3.14.
+CI runs the suite on Python 3.9, 3.11, 3.13 and 3.14 on Linux, and on 3.13 on
+macOS and Windows.
 
 ## License
 

@@ -20,6 +20,7 @@ python internals/scripts/encrypt.py            # guided encryption wizard
 python internals/scripts/decrypt.py            # guided decryption wizard
 python internals/scripts/encrypt.py --doctor   # health check (read-only)
 python tests/run_tests.py                      # the whole suite
+python -m ruff check .                         # CI runs this too
 ```
 
 Everything is also reachable non-interactively, which is how the suite drives it:
@@ -44,6 +45,9 @@ python tools/build_release.py --root PRODUCTION_ROOT   # package for beneficiari
 ```
 
 ## Architecture
+
+`docs/ARCHITECTURE.md` is the public version of this section, with diagrams.
+Keep the two consistent when a decision here changes.
 
 ### One package, two thin entry points
 
@@ -116,6 +120,8 @@ what they are given.
   checked.
 - The builder runs `doctor` *through the staged exe* from an unrelated working
   directory. Keep that check: it is what catches a build that cannot find its vault.
+- A production root's own `internals/scripts/resources/ascii.txt` replaces the
+  repository's banner in the staged package.
 - It refuses to package whole private keys, `[SENSITIVE]` files, or the key and
   handoff folders, and refuses to package this repository (the sample vault).
 
