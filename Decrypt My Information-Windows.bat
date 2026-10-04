@@ -5,17 +5,9 @@ title Decrypt My Information
 REM ---------------------------------------------------------------------
 REM  Launcher for whoever needs to open the encrypted document.
 REM
-REM  The previous version of this file did three things that could leave a
-REM  beneficiary staring at nothing:
-REM    * it activated a .venv that nothing in the repository ever creates,
-REM      so on any fresh copy the activate call failed;
-REM    * it then ran `python`, which on a machine without Python opens the
-REM      Microsoft Store instead of reporting anything;
-REM    * it ended with `exit`, which closes the window -- taking every error
-REM      message with it.
-REM
-REM  This version finds a usable Python, explains itself if it cannot, and
-REM  never closes the window on the way out.
+REM  Finds a usable Python, explains itself in plain words if there is
+REM  none, and never closes the window on the way out: an error message
+REM  nobody had time to read is the same as no message.
 REM ---------------------------------------------------------------------
 
 cd /d "%~dp0"

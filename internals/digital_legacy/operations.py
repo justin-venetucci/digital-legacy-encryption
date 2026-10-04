@@ -15,6 +15,7 @@ plaintext we started from.  Only then is the operation reported as successful.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import random
 from collections.abc import Sequence
@@ -412,12 +413,10 @@ def _desktop_candidates(home: Path) -> list[Path]:
         if shell:
             candidates.append(shell)
         candidates.append(home / "OneDrive" / "Desktop")
-        try:
+        with contextlib.suppress(OSError):  # pragma: no cover - defensive
             candidates.extend(
                 sorted(p / "Desktop" for p in home.glob("OneDrive - *") if p.is_dir())
             )
-        except OSError:  # pragma: no cover - defensive
-            pass
     candidates.append(home / "Desktop")
     return candidates
 

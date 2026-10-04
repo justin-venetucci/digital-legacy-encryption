@@ -141,8 +141,14 @@ def stage(production_root: Path, stage_dir: Path, program: Path | None) -> None:
     # The Python fallback: used when the compiled program cannot run, and by
     # anyone in the future who would rather read the code than trust an exe.
     ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
-    shutil.copytree(INTERNALS / "digital_legacy", target / "digital_legacy", ignore=ignore)
+    package = "digital_legacy"
+    shutil.copytree(INTERNALS / package, target / package, ignore=ignore)
     shutil.copytree(INTERNALS / "scripts", target / "scripts", ignore=ignore)
+    # The wizard's banner is the one cosmetic an owner may want to personalise.
+    # A production root that carries its own wins over the repository's.
+    banner = Path("scripts") / "resources" / "ascii.txt"
+    if (source / banner).is_file():
+        shutil.copy2(source / banner, target / banner)
 
     if program is not None:
         shutil.copytree(program, target / "program")
@@ -227,7 +233,8 @@ def write_zip(stage_dir: Path, destination: Path) -> Path:
     second one inside it is one more place for a beneficiary to get lost.
     """
     scratch = destination.with_name(destination.name + ".partial")
-    with zipfile.ZipFile(scratch, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+    deflate = zipfile.ZIP_DEFLATED
+    with zipfile.ZipFile(scratch, "w", deflate, compresslevel=9) as archive:
         for path in sorted(stage_dir.rglob("*")):
             if path.is_file():
                 archive.write(path, path.relative_to(stage_dir).as_posix())
@@ -293,7 +300,8 @@ def main(argv: list[str] | None = None) -> int:
 
         failures = health_check(stage_dir)
         if failures:
-            raise BuildError("The staged copy is not healthy:\n  " + "\n  ".join(failures))
+            listed = "\n  ".join(failures)
+            raise BuildError("The staged copy is not healthy:\n  " + listed)
         print("Health check passed on the staged copy.")
 
         if program is not None:

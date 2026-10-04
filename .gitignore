@@ -25,11 +25,11 @@ internals/encrypted/*
 internals/binaries/*
 !internals/binaries/*.placeholder
 !internals/binaries/LICENSE.txt
-!internals/binaries/README.md
-!internals/binaries/checksums.txt
 
-# The compiled decrypt program, produced by tools/build_release.py.
+# The compiled decrypt program and the packages tools/build_release.py writes.
 internals/program/
+release/
+*.zip
 
 # ---------------------------------------------------------------------------
 # Python / editor / OS noise
@@ -46,6 +46,7 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
+.claude/
 .idea/
 .vscode/
 .DS_Store

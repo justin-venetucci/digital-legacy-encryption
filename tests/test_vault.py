@@ -139,9 +139,9 @@ class VaultTests(unittest.TestCase):
         entry = VaultEntry(
             ciphertext_name="A.age", original_stem="A", original_suffix=".pdf"
         )
-        self.vault.save_manifest(Manifest(owner="Justin", threshold=2, entries=[entry]))
+        self.vault.save_manifest(Manifest(owner="Sam", threshold=2, entries=[entry]))
         loaded = self.vault.load_manifest()
-        self.assertEqual(loaded.owner, "Justin")
+        self.assertEqual(loaded.owner, "Sam")
         self.assertEqual(loaded.entries[0].original_suffix, ".pdf")
 
     def test_unknown_manifest_fields_are_ignored(self):

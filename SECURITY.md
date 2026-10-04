@@ -170,6 +170,7 @@ production folder without verifying them — see above.
 
 ## Reporting a problem
 
-This is a personal project with no security team and no disclosure process. Open
-an issue for anything non-sensitive. For a genuine vulnerability, contact the
-repository owner directly rather than filing publicly.
+This is a personal project with no security team. Open an issue for anything
+non-sensitive. For a genuine vulnerability, use
+[private vulnerability reporting](https://github.com/justin-venetucci/digital-legacy-encryption/security/advisories/new)
+rather than filing publicly.

@@ -12,7 +12,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
-import sys
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -78,11 +78,12 @@ class CompiledLayoutTests(unittest.TestCase):
     def test_the_environment_variable_still_wins(self):
         elsewhere = self.root / "elsewhere"
         elsewhere.mkdir()
-        with mock.patch.dict("os.environ", {layout.ROOT_ENV_VAR: str(elsewhere)}):
-            with mock.patch.object(
-                layout, "_compiled_program_dir", return_value=self.program
-            ):
-                self.assertEqual(Layout.discover().root, elsewhere)
+        with mock.patch.dict(
+            "os.environ", {layout.ROOT_ENV_VAR: str(elsewhere)}
+        ), mock.patch.object(
+            layout, "_compiled_program_dir", return_value=self.program
+        ):
+            self.assertEqual(Layout.discover().root, elsewhere)
 
     def test_an_ordinary_run_is_not_treated_as_compiled(self):
         self.assertIsNone(layout._compiled_program_dir())
@@ -101,7 +102,9 @@ class DesktopTests(unittest.TestCase):
     def resolve(self, *, shell=None, windows=True):
         with mock.patch.object(operations.Path, "home", return_value=self.home), \
              mock.patch.object(operations.os, "name", "nt" if windows else "posix"), \
-             mock.patch.object(operations, "_windows_shell_desktop", return_value=shell):
+             mock.patch.object(
+                 operations, "_windows_shell_desktop", return_value=shell
+             ):
             return operations.default_output_dir()
 
     def test_onedrive_desktop_is_preferred_over_an_empty_leftover(self):
@@ -142,7 +145,7 @@ class HandoffProfileTests(unittest.TestCase):
 
     def context(self, **profile):
         return handoff.HandoffContext(
-            owner="Justin",
+            owner="Sam",
             document="Plan.pdf",
             policy=self.policy,
             keypairs=self.pairs,
@@ -174,7 +177,10 @@ class HandoffProfileTests(unittest.TestCase):
         self.assertIn("Leave it where it was shared with you", text)
 
     def test_notes_are_comments_and_the_file_still_parses(self):
-        notes = "keywords:\n  - digital legacy plan\n\n# already a comment\nAGE-SECRET-KEY-1NOTAKEY"
+        notes = (
+            "keywords:\n  - digital legacy plan\n\n"
+            "# already a comment\nAGE-SECRET-KEY-1NOTAKEY"
+        )
         text = agekeys.render_key_file(
             self.pairs[0], threshold=2, total_shares=3, notes=notes
         )
@@ -191,7 +197,8 @@ class HandoffProfileTests(unittest.TestCase):
         self.assertEqual(parsed.label, "Alice")
 
     def test_readme_names_the_real_key_files_and_how_to_get_them(self):
-        readme = handoff.vault_readme(self.context(key_prefix=PREFIX, shared_folder=True))
+        context = self.context(key_prefix=PREFIX, shared_folder=True)
+        readme = handoff.vault_readme(context)
         flat = " ".join(readme.split())
         self.assertIn(f"{PREFIX}<name>.yaml", flat)
         self.assertIn("Request access", flat)
@@ -250,7 +257,7 @@ class ProfileThroughTheCliTests(unittest.TestCase):
     def test_encrypt_then_reseal_keeps_the_owners_naming(self):
         code, out = self.run_cli(
             "encrypt", "--file", str(self.source), "--shares", "3", "--threshold", "2",
-            "--name", "Alice", "--name", "Bob", "--name", "Carol", "--owner", "Justin",
+            "--name", "Alice", "--name", "Bob", "--name", "Carol", "--owner", "Sam",
             "--key-prefix", PREFIX, "--shared-folder", "--key-notes", str(self.notes),
         )  # fmt: skip
         self.assertEqual(code, 0, out)
@@ -266,7 +273,7 @@ class ProfileThroughTheCliTests(unittest.TestCase):
         code, out = self.run_cli(
             "reseal", "--key", str(self.key("Alice")), "--key", str(self.key("Bob")),
             "--shares", "3", "--threshold", "2",
-            "--name", "Alice", "--name", "Bob", "--name", "Dad", "--owner", "Justin",
+            "--name", "Alice", "--name", "Bob", "--name", "Dad", "--owner", "Sam",
         )  # fmt: skip
         self.assertEqual(code, 0, out)
         self.assertTrue(self.key("Dad").exists(), out)
@@ -310,6 +317,21 @@ class ReleaseBuilderTests(unittest.TestCase):
 
     def tearDown(self):
         self._tmp.cleanup()
+
+    def test_a_production_root_can_carry_its_own_banner(self):
+        root = self.stage / "root"
+        shutil.copytree(self.stage / "internals", root / "internals")
+        (root / "internals" / "binaries").mkdir()
+        resources = root / "internals" / "scripts" / "resources"
+        resources.mkdir(parents=True)
+        (resources / "ascii.txt").write_text("Our Family\n", encoding="utf-8")
+
+        staged = self.stage / "staged"
+        self.builder.stage(root, staged, None)
+
+        banner = staged / "internals" / "scripts" / "resources" / "ascii.txt"
+        self.assertEqual(banner.read_text(encoding="utf-8"), "Our Family\n")
+        self.assertTrue((staged / "internals" / "scripts" / "decrypt.py").is_file())
 
     def test_a_clean_tree_passes(self):
         self.assertEqual(self.builder.find_secrets(self.stage), [])

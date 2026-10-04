@@ -82,7 +82,7 @@ class EncryptWizardTests(unittest.TestCase):
             [
                 "",                       # press Enter to begin
                 str(self.source),         # typed path instead of the chooser
-                "Justin",                 # owner name
+                "Sam",                 # owner name
                 "3",                      # how many keys
                 "2",                      # threshold
                 "Alice", "Bob", "Carol",  # keyholder names
@@ -111,7 +111,7 @@ class EncryptWizardTests(unittest.TestCase):
         import re
 
         _, console = self.run_wizard(
-            ["", str(self.source), "Justin", "2", "2", "A", "B", "", ""]
+            ["", str(self.source), "Sam", "2", "2", "A", "B", "", ""]
         )
         pairs = re.findall(r"\[Step (\d+) of (\d+)\]", console.text)
         self.assertTrue(pairs)
@@ -121,7 +121,7 @@ class EncryptWizardTests(unittest.TestCase):
     def test_a_fragile_arrangement_is_flagged_and_can_be_declined(self):
         code, console = self.run_wizard(
             [
-                "", str(self.source), "Justin",
+                "", str(self.source), "Sam",
                 "2", "2",          # 2 of 2: losing either key loses everything
                 "A", "B",
                 "n",               # decline the arrangement
@@ -134,7 +134,7 @@ class EncryptWizardTests(unittest.TestCase):
 
     def test_keyholder_name_with_a_slash_cannot_escape_the_folder(self):
         self.run_wizard(
-            ["", str(self.source), "Justin", "1", "1", "Alice/Bob", "y", ""]
+            ["", str(self.source), "Sam", "1", "1", "Alice/Bob", "y", ""]
         )
         names = [p.name for p in self.layout.keys_out_dir.glob("*.yaml")]
         self.assertEqual(names, ["Key for Digital Legacy - Alice-Bob.yaml"])
@@ -156,7 +156,7 @@ class DecryptWizardTests(unittest.TestCase):
                     "--file", str(self.source),
                     "--shares", "3", "--threshold", "2",
                     "--name", "Alice", "--name", "Bob", "--name", "Carol",
-                    "--owner", "Justin",
+                    "--owner", "Sam",
                 ],
                 layout=self.layout,
             )
@@ -413,7 +413,7 @@ class CommandLineTests(unittest.TestCase):
     def test_handoff_can_be_regenerated_from_the_vault_alone(self):
         self.cli(["encrypt", "--no-colour", "--quiet", "--file", str(self.source),
                   "--shares", "2", "--threshold", "2", "--name", "Alice",
-                  "--name", "Bob", "--owner", "Justin"])
+                  "--name", "Bob", "--owner", "Sam"])
         destination = self.root / "reprinted"
         self.assertEqual(
             self.cli(["handoff", "--no-colour", "--output", str(destination)]), 0
